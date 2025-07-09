@@ -7,6 +7,7 @@ import string
 from .browser_config import BrowserConfig
 from .browser_launcher import BrowserLauncher
 from .browser_launch_error import BrowserLaunchError
+import socket
 
 class NekoBrowserLauncher(BrowserLauncher):
 	"""Launches browser using Neko Docker container."""
@@ -15,13 +16,47 @@ class NekoBrowserLauncher(BrowserLauncher):
 		characters = string.ascii_letters
 		random_string = ''.join(secrets.choice(characters) for _ in range(length))
 		return random_string.lower()
-	
+
+	def _get_available_ports(self):
+		def find_free_port(start, end):
+			for port in range(start, end + 1):
+				with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+					try:
+						s.bind(("", port))
+						return port
+					except OSError:
+						continue
+			return None
+
+		port1 = find_free_port(8080, 8999)
+		port2 = find_free_port(9223, 9999)
+
+		return port1, port2
+
+	def _docker_image_exists(self, image_name: str) -> bool:
+		try:
+			result = subprocess.run(
+				["docker", "images", "-q", image_name],
+				capture_output=True,
+				text=True,
+				check=True
+			)
+			return bool(result.stdout.strip())
+		except subprocess.CalledProcessError:
+			return False
+
 	def launch(self, config: BrowserConfig) -> tuple[subprocess.Popen, str]:
 		"""Launch Neko browser container."""
-		if not os.path.exists(config.neko_dir):
+		if not self._docker_image_exists(config.neko_docker_cmd.split(" ")[-1]):
+			logger_config.info("Please Follow This to install: https://github.com/jebin2/neko-apps/blob/master/chrome-remote-debug/README.md")
 			raise BrowserLaunchError(f"Neko directory not found: {config.neko_dir}")
-		
-		cmd = ["./run-neko.sh", "-p", config.user_data_dir, "-i", self.generate_random_string()]
+
+		server_port, debug_port = self._get_available_ports()
+		cmd = (
+			config.neko_docker_cmd
+			.replace("server_port", str(server_port))
+			.replace("debug_port", str(debug_port))
+		)
 		
 		try:
 			process = subprocess.Popen(
@@ -31,10 +66,9 @@ class NekoBrowserLauncher(BrowserLauncher):
 				text=True,
 				bufsize=1,
 				env={**os.environ, 'PYTHONUNBUFFERED': '1'},
-				cwd=config.neko_dir
+				shell=True
 			)
-			
-			debug_port, server_port = self._parse_neko_output(process)
+
 			ws_url = self._get_websocket_url(debug_port, config.connection_timeout)
 			
 			logger_config.info(f"Neko browser launched with PID: {process.pid} with port {debug_port} with server port {server_port}")
@@ -42,30 +76,6 @@ class NekoBrowserLauncher(BrowserLauncher):
 			
 		except Exception as e:
 			raise BrowserLaunchError(f"Failed to launch Neko browser: {e}")
-	
-	def _parse_neko_output(self, process: subprocess.Popen) -> int:
-		"""Parse Neko output to extract debugging port."""
-		debug_port = None
-		server_port = None
-
-		while debug_port is None or server_port is None:
-			line = process.stdout.readline()
-			if not line:
-				continue
-			print(line)
-
-			match = re.search(r"Debug port:\s*(\d+)", line)
-			if match:
-				debug_port = int(match.group(1))
-
-			match = re.search(r"Server port:\s*(\d+)", line)
-			if match:
-				server_port = int(match.group(1))
-		
-		if debug_port is None:
-			raise BrowserLaunchError("Could not determine Neko debug port")
-		logger_config.info("Server started.")
-		return debug_port, server_port
 	
 	def cleanup(self, process: subprocess.Popen) -> None:
 		"""Clean up Neko process."""
