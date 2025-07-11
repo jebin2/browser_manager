@@ -12,7 +12,7 @@ class BrowserConfig:
     headless: bool = False
     use_neko: bool = True
     neko_dir: str = os.getenv("NEKO_DIR", os.path.expanduser("~/git/neko-remote-debugging"))
-    neko_docker_cmd: str = 'docker run -it --rm -p server_port:8080 -p debug_port:9223 --cap-add=SYS_ADMIN -e NEKO_CHROME_FLAGS="--no-sandbox --no-zygote --disable-extensions --window-size=1920,1080" ghcr.io/m1k1o/neko-apps/chrome-remote-debug:latest'
+    neko_docker_cmd: str = 'docker run --rm -p server_port:8080 -p debug_port:9223 --cap-add=SYS_ADMIN -e NEKO_CHROME_FLAGS="--no-sandbox --no-zygote --disable-extensions --window-size=1920,1080" ghcr.io/m1k1o/neko-apps/chrome-remote-debug:latest'
     close_other_tabs: bool = True
     minimize_window_focus: bool = False
     connection_timeout: int = 30
