@@ -15,7 +15,7 @@ class BrowserLauncher(ABC):
         pass
     
     @abstractmethod
-    def cleanup(self, process: subprocess.Popen) -> None:
+    def cleanup(self, config: BrowserConfig, process: subprocess.Popen) -> None:
         """Clean up browser process."""
         pass
     
