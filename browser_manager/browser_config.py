@@ -15,6 +15,7 @@ class BrowserConfig:
     neko_dir: str = os.getenv("NEKO_DIR", os.path.expanduser("~/git/neko-remote-debugging"))
     neko_docker_cmd: str = (
         'docker run -d --name docker_name --rm '
+        '--network=host '
         '-p server_port:8080 -p debug_port:9223 '
         '--cap-add=SYS_ADMIN '
         '-v user_data_dir:/home/neko/chrome-profile '
