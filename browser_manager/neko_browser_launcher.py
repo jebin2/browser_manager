@@ -1,7 +1,7 @@
 from custom_logger import logger_config
 import os
 import subprocess
-import re
+import shutil
 import secrets
 import string
 from .browser_config import BrowserConfig
@@ -46,6 +46,40 @@ class NekoBrowserLauncher(BrowserLauncher):
 		except subprocess.CalledProcessError:
 			return False
 
+	def clean_browser_profile(self, config: BrowserConfig):
+		"""
+		Clean up a browser profile directory by removing lock files and caches.
+
+		Args:
+			profile_path (str): Path to the browser user data directory.
+		"""
+		if config.delete_user_data_dir_singleton_lock:
+			profile_path = config.user_data_dir
+			# Remove Singleton* files
+			for filename in ["SingletonLock", "SingletonCookie", "SingletonSocket"]:
+				file_path = os.path.join(profile_path, filename)
+				if os.path.exists(file_path):
+					os.remove(file_path)
+					print(f"Removed {file_path}")
+
+			# Remove lockfile
+			lockfile_path = os.path.join(profile_path, "lockfile")
+			if os.path.exists(lockfile_path):
+				os.remove(lockfile_path)
+				print(f"Removed {lockfile_path}")
+
+			# Remove Extensions directory
+			extensions_path = os.path.join(profile_path, "Extensions")
+			if os.path.exists(extensions_path):
+				shutil.rmtree(extensions_path)
+				print(f"Removed {extensions_path}")
+
+			# Remove GPUCache directory
+			gpu_cache_path = os.path.join(profile_path, "GPUCache")
+			if os.path.exists(gpu_cache_path):
+				shutil.rmtree(gpu_cache_path)
+				print(f"Removed {gpu_cache_path}")
+
 	def stop_docker(self, config: BrowserConfig) -> bool:
 		try:
 			logger_config.info(f"Stopping the existing docker {config.docker_name} if there.")
@@ -66,6 +100,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 			raise BrowserLaunchError(f"Neko directory not found: {config.neko_dir}")
 
 		self.stop_docker(config)
+		self.clean_browser_profile(config)
 
 		server_port, debug_port = self._get_available_ports()
 		cmd = (
@@ -73,8 +108,8 @@ class NekoBrowserLauncher(BrowserLauncher):
 			.replace("server_port", str(server_port))
 			.replace("debug_port", str(debug_port))
 			.replace("docker_name", config.docker_name)
+			.replace("user_data_dir", config.user_data_dir)
 		)
-
 		try:
 			process = subprocess.Popen(
 				cmd,
