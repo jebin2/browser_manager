@@ -19,7 +19,7 @@ class BrowserConfig:
         '-p server_port:8080 -p debug_port:9223 '
         '--cap-add=SYS_ADMIN '
         '-v user_data_dir:/home/neko/chrome-profile '
-        '-e NEKO_CHROME_FLAGS="--no-sandbox --no-zygote --disable-extensions --window-size=1920,1080" '
+        '-e NEKO_CHROME_FLAGS="--no-sandbox --no-zygote --disable-extensions --window-size=1920,1080 --no-first-run --disable-session-crashed-bubble --disable-infobars" '
         '-e NEKO_DISABLE_AUDIO=1 '
         'ghcr.io/m1k1o/neko-apps/chrome-remote-debug:latest'
     )
