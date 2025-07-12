@@ -125,8 +125,8 @@ class BrowserManager:
         
         # Clean up browser process
         if self.browser_process:
-            self.launcher.cleanup(self.browser_process)
-        
+            self.launcher.cleanup(self.config, self.browser_process)
+
         # Clean up temp directory
         if self._temp_dir_created and self.config.user_data_dir:
             try:

@@ -61,7 +61,7 @@ class LocalBrowserLauncher(BrowserLauncher):
         cmd.extend(config.extra_args)
         return cmd
     
-    def cleanup(self, process: subprocess.Popen) -> None:
+    def cleanup(self, config: BrowserConfig, process: subprocess.Popen) -> None:
         """Clean up browser process and children."""
         if not process:
             return

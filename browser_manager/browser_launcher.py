@@ -35,6 +35,7 @@ class BrowserLauncher(ABC):
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
+                logger_config.info(f"Waiting to start neko browser debug mode {int(time.time() - start_time):02d}", overwrite=True)
                 response = requests.get(f"http://localhost:{port}/json/version", timeout=2)
                 if response.status_code == 200:
                     return

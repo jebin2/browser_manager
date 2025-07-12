@@ -35,13 +35,27 @@ class NekoBrowserLauncher(BrowserLauncher):
 
 	def _docker_image_exists(self, image_name: str) -> bool:
 		try:
-			result = subprocess.run(
+			logger_config.info("Checking for docker image exists.")
+			subprocess.run(
 				["docker", "images", "-q", image_name],
 				capture_output=True,
 				text=True,
 				check=True
 			)
-			return bool(result.stdout.strip())
+			return True
+		except subprocess.CalledProcessError:
+			return False
+
+	def stop_docker(self, config: BrowserConfig) -> bool:
+		try:
+			logger_config.info(f"Stopping the existing docker {config.docker_name} if there.")
+			subprocess.run(
+				["docker", "rm", "-f", config.docker_name],
+				capture_output=True,
+				text=True,
+				check=True
+			)
+			return True
 		except subprocess.CalledProcessError:
 			return False
 
@@ -51,13 +65,16 @@ class NekoBrowserLauncher(BrowserLauncher):
 			logger_config.info("Please Follow This to install: https://github.com/jebin2/neko-apps/blob/master/chrome-remote-debug/README.md")
 			raise BrowserLaunchError(f"Neko directory not found: {config.neko_dir}")
 
+		self.stop_docker(config)
+
 		server_port, debug_port = self._get_available_ports()
 		cmd = (
 			config.neko_docker_cmd
 			.replace("server_port", str(server_port))
 			.replace("debug_port", str(debug_port))
+			.replace("docker_name", config.docker_name)
 		)
-		
+
 		try:
 			process = subprocess.Popen(
 				cmd,
@@ -77,10 +94,11 @@ class NekoBrowserLauncher(BrowserLauncher):
 		except Exception as e:
 			raise BrowserLaunchError(f"Failed to launch Neko browser: {e}")
 	
-	def cleanup(self, process: subprocess.Popen) -> None:
+	def cleanup(self, config: BrowserConfig, process: subprocess.Popen) -> None:
 		"""Clean up Neko process."""
 		if process:
 			try:
+				self.stop_docker(config)
 				process.terminate()
 				process.wait(timeout=5)
 			except subprocess.TimeoutExpired:
