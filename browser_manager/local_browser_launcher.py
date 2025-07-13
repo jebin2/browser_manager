@@ -53,12 +53,14 @@ class LocalBrowserLauncher(BrowserLauncher):
             config.browser_executable,
             f"--remote-debugging-port={config.debugging_port}",
             f"--user-data-dir={config.user_data_dir}",
+            config.chrome_flags
         ]
         
         if config.headless:
             cmd.append("--headless=new")
         
         cmd.extend(config.extra_args)
+        logger_config.info(f'Command to run: {cmd}')
         return cmd
     
     def cleanup(self, config: BrowserConfig, process: subprocess.Popen) -> None:
