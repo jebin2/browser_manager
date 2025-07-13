@@ -113,8 +113,8 @@ class NekoBrowserLauncher(BrowserLauncher):
 		try:
 			process = subprocess.Popen(
 				cmd,
-				stdout=subprocess.PIPE,
-				stderr=subprocess.PIPE,
+                stdout=None,  # inherit from parent
+                stderr=None,  # inherit from parent
 				text=True,
 				bufsize=1,
 				env={**os.environ, 'PYTHONUNBUFFERED': '1'},
