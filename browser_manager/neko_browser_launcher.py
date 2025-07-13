@@ -16,10 +16,28 @@ class NekoBrowserLauncher(BrowserLauncher):
 		characters = string.ascii_letters
 		random_string = ''.join(secrets.choice(characters) for _ in range(length))
 		return random_string.lower()
-
+	
 	def _get_available_ports(self):
+		def is_port_in_use_by_docker(port):
+			try:
+				result = subprocess.run(
+					["docker", "ps", "--format", "{{.Ports}}"],
+					stdout=subprocess.PIPE,
+					stderr=subprocess.PIPE,
+					text=True,
+				)
+				for line in result.stdout.strip().splitlines():
+					if f":{port}->" in line or f":{port}/" in line:
+						return True
+			except Exception:
+				# Ignore if Docker not installed
+				return False
+			return False
+
 		def find_free_port(start, end):
 			for port in range(start, end + 1):
+				if is_port_in_use_by_docker(port):
+					continue
 				with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 					try:
 						s.bind(("", port))
@@ -82,16 +100,34 @@ class NekoBrowserLauncher(BrowserLauncher):
 
 	def stop_docker(self, config: BrowserConfig) -> bool:
 		try:
-			logger_config.info(f"Stopping the existing docker {config.docker_name} if there.")
-			subprocess.run(
-				["docker", "rm", "-f", config.docker_name],
-				capture_output=True,
+			logger_config.info(f"Stopping existing Docker container: {config.docker_name}")
+			
+			# Check if container exists
+			result = subprocess.run(
+				["docker", "ps", "-a", "--format", "{{.Names}}"],
+				stdout=subprocess.PIPE,
+				stderr=subprocess.PIPE,
 				text=True,
-				check=True
+				check=True,
 			)
-			return True
-		except subprocess.CalledProcessError:
+			container_names = result.stdout.strip().splitlines()
+			
+			if config.docker_name in container_names:
+				logger_config.info(f"Container {config.docker_name} found. Removing it...")
+				subprocess.run(
+					["docker", "rm", "-f", config.docker_name],
+					check=True
+				)
+				logger_config.info(f"Container {config.docker_name} stopped and removed successfully.")
+				return True
+			else:
+				logger_config.info(f"No container named {config.docker_name} found.")
+				return False
+
+		except subprocess.CalledProcessError as e:
+			logger_config.error(f"Error stopping Docker container {config.docker_name}: {e}")
 			return False
+
 
 	def launch(self, config: BrowserConfig) -> tuple[subprocess.Popen, str]:
 		"""Launch Neko browser container."""
@@ -110,6 +146,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 			.replace("docker_name", config.docker_name)
 			.replace("user_data_dir", config.user_data_dir)
 		)
+		logger_config.info(f'Command to run: {cmd}')
 		try:
 			process = subprocess.Popen(
 				cmd,
@@ -120,6 +157,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 				env={**os.environ, 'PYTHONUNBUFFERED': '1'},
 				shell=True
 			)
+			logger_config.info(f"Neko browser launched with PID: {process.pid}")
 
 			ws_url = self._get_websocket_url(debug_port, config.connection_timeout)
 			
