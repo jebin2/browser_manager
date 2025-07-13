@@ -103,9 +103,6 @@ class BrowserManager:
     
     def stop(self) -> None:
         """Stop the browser and clean up resources."""
-        if not self._is_started:
-            return
-        
         logger_config.info("Stopping browser manager...")
         
         # Close page
@@ -127,8 +124,7 @@ class BrowserManager:
                 logger_config.warning(f"Error stopping Playwright: {e}")
         
         # Clean up browser process
-        if self.browser_process:
-            self.launcher.cleanup(self.config, self.browser_process)
+        self.launcher.cleanup(self.config, self.browser_process)
 
         # Clean up temp directory
         if self._temp_dir_created and self.config.user_data_dir:
@@ -157,8 +153,7 @@ class BrowserManager:
     
     def __del__(self) -> None:
         """Destructor cleanup."""
-        if self._is_started:
-            self.stop()
+        self.stop()
 
 
 # Factory function for common configurations
