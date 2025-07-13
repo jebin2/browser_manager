@@ -74,11 +74,14 @@ class BrowserManager:
             return self.page
         
         try:
-            # Launch browser
-            self.browser_process, ws_url = self.launcher.launch(self.config)
-            
             # Connect Playwright
             self.playwright = sync_playwright().start()
+            if not self.config.browser_executable:
+                self.config.browser_executable = self.playwright.chromium.executable_path
+
+            # Launch browser
+            self.browser_process, ws_url = self.launcher.launch(self.config)
+
             self.browser = self.playwright.chromium.connect_over_cdp(ws_url)
             
             # Setup page management

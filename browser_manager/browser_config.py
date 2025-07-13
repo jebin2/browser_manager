@@ -8,7 +8,7 @@ class BrowserConfig:
     url: str = "https://jebin2-paper.hf.space/"
     user_data_dir: Optional[str] = None
     delete_user_data_dir_singleton_lock: bool = True
-    browser_executable: str = os.getenv("BROWSER_EXECUTABLE", "/usr/bin/brave-browser")
+    browser_executable: str = os.getenv("BROWSER_EXECUTABLE", None)
     debugging_port: int = 9222
     headless: bool = False
     use_neko: bool = True
