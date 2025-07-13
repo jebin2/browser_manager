@@ -13,7 +13,7 @@ class BrowserConfig:
     headless: bool = False
     use_neko: bool = True
     neko_dir: str = os.getenv("NEKO_DIR", os.path.expanduser("~/git/neko-remote-debugging"))
-    chrome_flags: str = "--no-sandbox --no-zygote --disable-extensions --window-size=1920,1080 --no-first-run --disable-session-crashed-bubble --disable-infobars"
+    chrome_flags: str = "--no-sandbox --no-zygote --disable-extensions --window-size=1920,1080 --no-first-run --disable-session-crashed-bubble --disable-infobars --disable-dev-shm-usage"
     neko_docker_cmd: str = (
         'docker run -d --name docker_name --rm '
         '--network=host '
