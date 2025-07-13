@@ -126,7 +126,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 
 		except subprocess.CalledProcessError as e:
 			logger_config.error(f"Error stopping Docker container {config.docker_name}: {e}")
-			return False
+			raise
 
 
 	def launch(self, config: BrowserConfig) -> tuple[subprocess.Popen, str]:
@@ -169,11 +169,14 @@ class NekoBrowserLauncher(BrowserLauncher):
 	
 	def cleanup(self, config: BrowserConfig, process: subprocess.Popen) -> None:
 		"""Clean up Neko process."""
-		if process:
-			try:
-				self.stop_docker(config)
-				process.terminate()
-				process.wait(timeout=5)
-			except subprocess.TimeoutExpired:
-				process.kill()
-			logger_config.info("Neko process cleaned up")
+		try:
+			self.stop_docker(config)
+			if process:
+				try:
+					process.terminate()
+					process.wait(timeout=5)
+				except subprocess.TimeoutExpired:
+					process.kill()
+				logger_config.info("Neko process cleaned up")
+		except Exception as e:
+			logger_config.error(f"Error during neko browser cleanup: {e}")
