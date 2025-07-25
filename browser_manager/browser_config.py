@@ -26,6 +26,8 @@ class BrowserConfig:
         "-p debug_port:9223"
     ])
 
+    host_network: bool = False
+
     server_port: int = 8080
     debug_port: int = 9223
     docker_name: str = "temp"
@@ -43,6 +45,7 @@ class BrowserConfig:
 
         return (
             f'docker run -d --name {self.docker_name} --rm '
+            f'{"--network=host" if self.host_network else ""} '
             f'{port_map_resolved} '
             '--cap-add=SYS_ADMIN '
             f'-v {self.user_data_dir or "/tmp/neko-profile"}:/home/neko/chrome-profile '
