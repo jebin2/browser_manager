@@ -4,6 +4,7 @@ from browser_manager.browser_config import BrowserConfig
 
 config = BrowserConfig()
 config.docker_name = "test"
+config.port_map_template.append("-p 54321:54321")
 browser_manager = BrowserManager(config)
 with browser_manager as page:
 	logger_config.info(f"Page title: {page.title()}")

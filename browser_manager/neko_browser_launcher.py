@@ -139,13 +139,9 @@ class NekoBrowserLauncher(BrowserLauncher):
 		self.clean_browser_profile(config)
 
 		server_port, debug_port = self._get_available_ports()
-		cmd = (
-			config.neko_docker_cmd
-			.replace("server_port", str(server_port))
-			.replace("debug_port", str(debug_port))
-			.replace("docker_name", config.docker_name)
-			.replace("user_data_dir", config.user_data_dir)
-		)
+		config.server_port = server_port
+		config.debug_port = debug_port
+		cmd = config.neko_docker_cmd
 		logger_config.info(f'Command to run: {cmd}')
 		try:
 			process = subprocess.Popen(

@@ -13,23 +13,40 @@ class BrowserConfig:
     headless: bool = False
     use_neko: bool = True
     neko_dir: str = os.getenv("NEKO_DIR", os.path.expanduser("~/git/neko-remote-debugging"))
+
     chrome_flags: str = (
         "--no-sandbox --no-zygote --disable-extensions "
         "--window-size=1920,1080 --no-first-run "
         "--disable-session-crashed-bubble --disable-infobars "
         "--disable-dev-shm-usage"
     )
-    neko_docker_cmd: str = (
-        'docker run -d --name docker_name --rm '
-        '-p server_port:8080 -p debug_port:9223 '
-        '--cap-add=SYS_ADMIN '
-        '-v user_data_dir:/home/neko/chrome-profile '
-        f'-e NEKO_CHROME_FLAGS="{chrome_flags}" '
-        '-e NEKO_DISABLE_AUDIO=1 '
-        'ghcr.io/m1k1o/neko-apps/chrome-remote-debug:latest'
-    )
+
+    port_map_template: List[str] = field(default_factory=lambda: [
+        "-p server_port:8080",
+        "-p debug_port:9223"
+    ])
+
+    server_port: int = 8080
+    debug_port: int = 9223
     docker_name: str = "temp"
     close_other_tabs: bool = True
     minimize_window_focus: bool = False
     connection_timeout: int = 30
     extra_args: List[str] = field(default_factory=list)
+
+    @property
+    def neko_docker_cmd(self) -> str:
+        port_map_resolved = " ".join([
+            p.replace("server_port", str(self.server_port)).replace("debug_port", str(self.debug_port))
+            for p in self.port_map_template
+        ])
+
+        return (
+            f'docker run -d --name {self.docker_name} --rm '
+            f'{port_map_resolved} '
+            '--cap-add=SYS_ADMIN '
+            f'-v {self.user_data_dir or "/tmp/neko-profile"}:/home/neko/chrome-profile '
+            f'-e NEKO_CHROME_FLAGS="{self.chrome_flags}" '
+            '-e NEKO_DISABLE_AUDIO=1 '
+            'ghcr.io/m1k1o/neko-apps/chrome-remote-debug:latest'
+        )
