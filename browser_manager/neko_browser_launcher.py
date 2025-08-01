@@ -139,6 +139,11 @@ class NekoBrowserLauncher(BrowserLauncher):
 			if config.docker_name in container_names:
 				logger_config.info(f"Container {config.docker_name} found. Removing it...")
 				subprocess.run(
+					["docker", "kill", config.docker_name],
+					check=False
+				)
+				logger_config.info("wait", seconds=5)
+				subprocess.run(
 					["docker", "rm", "-f", config.docker_name],
 					check=True
 				)
