@@ -18,7 +18,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 		random_string = ''.join(secrets.choice(characters) for _ in range(length))
 		return random_string.lower()
 	
-	def _get_available_ports(self):
+	def _get_available_ports(self, config: BrowserConfig):
 		def is_port_in_use_by_docker(port):
 			try:
 				result = subprocess.run(
@@ -47,8 +47,8 @@ class NekoBrowserLauncher(BrowserLauncher):
 						continue
 			return None
 
-		port1 = find_free_port(8080, 8999)
-		port2 = find_free_port(9223, 9999)
+		port1 = find_free_port(config.starting_server_port_to_check, 8999)
+		port2 = find_free_port(config.starting_debug_port_to_check, 9999)
 
 		return port1, port2
 
@@ -168,7 +168,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 		self.stop_docker(config)
 		self.clean_browser_profile(config)
 
-		server_port, debug_port = self._get_available_ports()
+		server_port, debug_port = self._get_available_ports(config)
 		config.server_port = server_port
 		config.debug_port = debug_port
 		cmd = config.neko_docker_cmd
