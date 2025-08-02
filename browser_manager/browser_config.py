@@ -28,8 +28,8 @@ class BrowserConfig:
 
     host_network: bool = False
 
-    starting_server_port_to_check: int = 8080
-    starting_debug_port_to_check: int = 9223
+    starting_server_port_to_check: int = 8081
+    starting_debug_port_to_check: int = 9224
     server_port: int = 8080
     debug_port: int = 9223
     docker_name: str = "temp"
