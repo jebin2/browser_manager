@@ -147,6 +147,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 					["docker", "rm", "-f", config.docker_name],
 					check=True
 				)
+				logger_config.info("wait", seconds=5)
 				logger_config.info(f"Container {config.docker_name} stopped and removed successfully.")
 				return True
 			else:
