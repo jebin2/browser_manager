@@ -19,6 +19,7 @@ class LocalBrowserLauncher(BrowserLauncher):
     
     def launch(self, config: BrowserConfig) -> tuple[subprocess.Popen, str]:
         """Launch local browser with remote debugging."""
+        self.clean_browser_profile(config)
         if self.window_manager and config.minimize_window_focus:
             self.window_manager.save_active_window()
         

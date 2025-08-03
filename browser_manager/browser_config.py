@@ -15,6 +15,7 @@ class BrowserConfig:
     neko_dir: str = os.getenv("NEKO_DIR", os.path.expanduser("~/git/neko-remote-debugging"))
 
     chrome_flags: str = (
+        "--disable-gpu "
         "--no-sandbox --no-zygote --disable-extensions "
         "--window-size=1920,1080 --no-first-run "
         "--disable-session-crashed-bubble --disable-infobars "

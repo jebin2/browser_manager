@@ -65,63 +65,6 @@ class NekoBrowserLauncher(BrowserLauncher):
 		except subprocess.CalledProcessError:
 			return False
 
-	def clean_browser_profile(self, config: BrowserConfig):
-		"""
-		Clean up a browser profile directory by removing lock files and caches.
-
-		Args:
-			config (BrowserConfig): Contains user_data_dir and cleanup flags.
-		"""
-		if not config.delete_user_data_dir_singleton_lock:
-			return
-
-		profile_path = config.user_data_dir
-
-		# Remove Singleton* files in user_data_dir
-		singleton_files = glob.glob(os.path.join(profile_path, "Singleton*"))
-		for file_path in singleton_files:
-			try:
-				os.remove(file_path)
-				logger_config.success(f"Removed {file_path}")
-			except Exception as e:
-				logger_config.error(f"Failed to remove {file_path}: {e}")
-
-		# Also remove lockfiles from /tmp/.com.google.Chrome*/Singleton*
-		tmp_singletons = glob.glob("/tmp/.com.google.Chrome*/Singleton*")
-		for file_path in tmp_singletons:
-			try:
-				os.remove(file_path)
-				logger_config.success(f"Removed temp file {file_path}")
-			except Exception as e:
-				logger_config.error(f"Failed to remove temp file {file_path}: {e}")
-
-		# Remove 'lockfile'
-		lockfile_path = os.path.join(profile_path, "lockfile")
-		if os.path.exists(lockfile_path):
-			try:
-				os.remove(lockfile_path)
-				logger_config.success(f"Removed {lockfile_path}")
-			except Exception as e:
-				logger_config.error(f"Failed to remove {lockfile_path}: {e}")
-
-		# Remove Extensions/
-		extensions_path = os.path.join(profile_path, "Extensions")
-		if os.path.exists(extensions_path):
-			try:
-				shutil.rmtree(extensions_path)
-				logger_config.success(f"Removed {extensions_path}")
-			except Exception as e:
-				logger_config.error(f"Failed to remove {extensions_path}: {e}")
-
-		# Remove GPUCache/
-		gpu_cache_path = os.path.join(profile_path, "GPUCache")
-		if os.path.exists(gpu_cache_path):
-			try:
-				shutil.rmtree(gpu_cache_path)
-				logger_config.success(f"Removed {gpu_cache_path}")
-			except Exception as e:
-				logger_config.error(f"Failed to remove {gpu_cache_path}: {e}")
-
 	def stop_docker(self, config: BrowserConfig) -> bool:
 		try:
 			logger_config.info(f"Stopping existing Docker container: {config.docker_name}")
