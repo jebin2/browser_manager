@@ -19,6 +19,9 @@ class NekoBrowserLauncher(BrowserLauncher):
 		return random_string.lower()
 	
 	def _get_available_ports(self, config: BrowserConfig):
+		if config.host_network:
+			return 8080, 9223
+
 		def is_port_in_use_by_docker(port):
 			try:
 				result = subprocess.run(
