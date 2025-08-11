@@ -39,6 +39,8 @@ class BrowserConfig:
     connection_timeout: int = 30
     extra_args: List[str] = field(default_factory=list)
 
+    additionl_docker_flag = ""
+
     @property
     def neko_docker_cmd(self) -> str:
         port_map_resolved = " ".join([
@@ -52,6 +54,7 @@ class BrowserConfig:
             f'{port_map_resolved} '
             '--cap-add=SYS_ADMIN '
             f'-v {self.user_data_dir or "/tmp/neko-profile"}:/home/neko/chrome-profile '
+            f'{self.additionl_docker_flag} '
             f'-e NEKO_CHROME_FLAGS="{self.chrome_flags}" '
             '-e NEKO_DISABLE_AUDIO=1 '
             'ghcr.io/m1k1o/neko-apps/chrome-remote-debug:latest'

@@ -104,6 +104,46 @@ class NekoBrowserLauncher(BrowserLauncher):
 			logger_config.error(f"Error stopping Docker container {config.docker_name}: {e}")
 			raise
 
+	def choose_file_via_xdotool(self, config: BrowserConfig, file_path):
+		print("[STEP 3] Using direct input approach...")
+		
+		try:
+			# Wait for dialog to stabilize
+			logger_config.info("Make sure to set AllowFileSelectionDialogs->True, URLAllowlist->folder path to make the volue and URLBlocklist to empty.")
+			logger_config.info("Wait for dialog to appear.", seconds=3)
+			
+			# Send Alt+Tab to ensure dialog focus
+			# subprocess.run([
+			#     'docker', 'exec', neko_container_name,
+			#     'xdotool', 'key', 'alt+Tab'
+			# ], timeout=3)
+			# time.sleep(1)
+			
+			# Focus address bar
+			subprocess.run([
+				'docker', 'exec', config.docker_name,
+				'xdotool', 'key', 'ctrl+l'
+			], timeout=3)
+			logger_config.info("Wait for commad finish.", seconds=1)
+			
+			# Type file path
+			subprocess.run([
+				'docker', 'exec', config.docker_name,
+				'xdotool', 'type', file_path
+			], timeout=5)
+			logger_config.info("Wait for commad finish.", seconds=1)
+			
+			# Press Enter
+			subprocess.run([
+				'docker', 'exec', config.docker_name,
+				'xdotool', 'key', 'Return'
+			], timeout=3)
+			
+			return True
+			
+		except subprocess.TimeoutExpired:
+			print("[ERROR] Direct input method timed out")
+			return False
 
 	def launch(self, config: BrowserConfig) -> tuple[subprocess.Popen, str]:
 		"""Launch Neko browser container."""
