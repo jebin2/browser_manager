@@ -109,7 +109,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 		
 		try:
 			# Wait for dialog to stabilize
-			logger_config.info("Make sure to set AllowFileSelectionDialogs->True, URLAllowlist->folder path to make the volue and URLBlocklist to empty.")
+			logger_config.info("Make sure to install xdotool and set AllowFileSelectionDialogs->True, URLAllowlist->folder path to make the volue and URLBlocklist to empty.")
 			logger_config.info("Wait for dialog to appear.", seconds=3)
 			
 			# Send Alt+Tab to ensure dialog focus
