@@ -84,6 +84,7 @@ class BrowserManager:
                 self.browser_process, ws_url = self.launcher.launch(self.config)
                 self.browser = self.playwright.chromium.connect_over_cdp(ws_url)
             else:
+                BrowserLauncher.clean_browser_profile(self, self.config)
                 # No remote debugging - use persistent context
                 automation_args = [
                     "--disable-blink-features=AutomationControlled",
