@@ -79,10 +79,24 @@ class BrowserManager:
             if not self.config.browser_executable:
                 self.config.browser_executable = self.playwright.chromium.executable_path
 
-            # Launch browser
-            self.browser_process, ws_url = self.launcher.launch(self.config)
+            if self.config.is_remote_debugging:
+                # Launch browser
+                self.browser_process, ws_url = self.launcher.launch(self.config)
+                self.browser = self.playwright.chromium.connect_over_cdp(ws_url)
+            else:
+                # No remote debugging - use persistent context
+                automation_args = [
+                    "--disable-blink-features=AutomationControlled",
+                ]
 
-            self.browser = self.playwright.chromium.connect_over_cdp(ws_url)
+                launch_args = self.config.chrome_flags.split() + self.config.extra_args + automation_args
+                self.context = self.playwright.chromium.launch_persistent_context(
+                    user_data_dir=self.config.user_data_dir,
+                    executable_path=self.config.browser_executable,
+                    headless=self.config.headless,
+                    args=launch_args
+                )
+                self.browser = self.context.browser
             
             # Setup page management
             self.page_manager = PageManager(self.browser, self.config.close_other_tabs)
