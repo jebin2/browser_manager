@@ -88,6 +88,7 @@ class BrowserManager:
                 # No remote debugging - use persistent context
                 automation_args = [
                     "--disable-blink-features=AutomationControlled",
+                    "--window-position=0,0"  # Optional: set window position
                 ]
 
                 launch_args = self.config.chrome_flags.split() + self.config.extra_args + automation_args
@@ -95,7 +96,8 @@ class BrowserManager:
                     user_data_dir=self.config.user_data_dir,
                     executable_path=self.config.browser_executable,
                     headless=self.config.headless,
-                    args=launch_args
+                    args=launch_args,
+                    viewport={'width': 1280, 'height': 720}
                 )
                 self.browser = self.context.browser
             
