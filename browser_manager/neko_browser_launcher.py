@@ -50,8 +50,8 @@ class NekoBrowserLauncher(BrowserLauncher):
 						continue
 			return None
 
-		port1 = find_free_port(config.starting_server_port_to_check, 8999)
-		port2 = find_free_port(config.starting_debug_port_to_check, 9999)
+		port1 = find_free_port(config.starting_server_port_to_check, config.starting_server_port_to_check+500)
+		port2 = find_free_port(config.starting_debug_port_to_check, config.starting_debug_port_to_check+500)
 
 		return port1, port2
 
