@@ -209,6 +209,15 @@ class NekoBrowserLauncher(BrowserLauncher):
 			logger_config.info(f"Neko browser launched with PID: {process.pid} with port {debug_port} with server port {server_port}")
 			if config.take_screenshot:
 				self._start_screenshot_loop(config)
+
+			# Cleanup function
+			import atexit
+			def cleanup():
+				print(f"Stopping container: {config.docker_name}")
+				subprocess.run(["docker", "kill", config.docker_name], check=False)
+
+			# Register cleanup
+			atexit.register(cleanup)
 			return process, ws_url
 			
 		except Exception as e:
