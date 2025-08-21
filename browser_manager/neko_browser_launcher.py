@@ -104,7 +104,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 			logger_config.error(f"Error stopping Docker container {config.docker_name}: {e}")
 			raise
 
-	def _start_screenshot_loop(config: BrowserConfig, interval=2):
+	def _start_screenshot_loop(self, config: BrowserConfig, interval=2):
 		# Build the exact command string
 		cmd = (
 			f"while true; do "
