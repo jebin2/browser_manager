@@ -109,9 +109,10 @@ class NekoBrowserLauncher(BrowserLauncher):
 		cmd = (
 			f"while true; do "
 			f"if docker ps -a --format '{{{{.Names}}}}' | grep -q '^{config.docker_name}$'; then "
-			f"    docker exec {config.docker_name} scrot /tmp/neko_screen.png && "
+			f"    TS=$(date +%Y%m%d_%H%M%S); "
+			f"    docker exec {config.docker_name} scrot /tmp/neko_$TS.png && "
 			f"    mkdir -p ./{config.docker_name} && "
-			f"    docker cp {config.docker_name}:/tmp/neko_screen.png ./{config.docker_name}/screenshot.png; "
+			f"    docker cp {config.docker_name}:/tmp/neko_$TS.png ./{config.docker_name}/neko_$TS.png; "
 			f"else "
 			f"    echo '[STOP] Container {config.docker_name} not found. Exiting loop.'; "
 			f"    break; "
@@ -119,6 +120,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 			f"sleep {interval}; "
 			f"done"
 		)
+
 
 
 		# Check if process is already running
