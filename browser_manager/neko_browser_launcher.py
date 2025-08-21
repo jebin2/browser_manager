@@ -127,7 +127,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 
 		# Start new background loop
 		subprocess.Popen(["bash", "-c", cmd])
-		logger_config.info(f"[BG] Screenshot loop started every {interval}s → saving in {save_dir}/")
+		logger_config.info(f"[BG] Screenshot loop started every {interval}s → saving in {config.docker_name}/")
 
 	def choose_file_via_xdotool(self, config: BrowserConfig, file_path):
 		print("[STEP 3] Using direct input approach...")
