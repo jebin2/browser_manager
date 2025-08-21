@@ -13,6 +13,7 @@ class BrowserConfig:
     debugging_port: int = 9222
     headless: bool = False
     use_neko: bool = True
+    take_screenshot: bool = True
     neko_dir: str = os.getenv("NEKO_DIR", os.path.expanduser("~/git/neko-remote-debugging"))
 
     chrome_flags: str = (

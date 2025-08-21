@@ -104,6 +104,31 @@ class NekoBrowserLauncher(BrowserLauncher):
 			logger_config.error(f"Error stopping Docker container {config.docker_name}: {e}")
 			raise
 
+	def _start_screenshot_loop(config: BrowserConfig, interval=2):
+		# Build the exact command string
+		cmd = (
+			f"while true; do "
+			f"docker exec {config.docker_name} scrot /tmp/neko_screen.png && "
+			f"mkdir -p ./{config.docker_name} && "
+			f"docker cp {config.docker_name}:/tmp/neko_screen.png ./{config.docker_name}/neko_$(date +%Y%m%d_%H%M%S).png; "
+			f"sleep {interval}; "
+			f"done"
+		)
+
+		# Check if process is already running
+		check = subprocess.run(
+			["pgrep", "-af", "scrot /tmp/neko_screen.png"],
+			stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+		)
+
+		if check.stdout.strip():  # Found running process
+			logger_config.warning("[SKIP] Screenshot loop already running.")
+			return
+
+		# Start new background loop
+		subprocess.Popen(["bash", "-c", cmd])
+		logger_config.info(f"[BG] Screenshot loop started every {interval}s → saving in {save_dir}/")
+
 	def choose_file_via_xdotool(self, config: BrowserConfig, file_path):
 		print("[STEP 3] Using direct input approach...")
 		
@@ -174,6 +199,8 @@ class NekoBrowserLauncher(BrowserLauncher):
 			ws_url = self._get_websocket_url(debug_port, config.connection_timeout)
 			
 			logger_config.info(f"Neko browser launched with PID: {process.pid} with port {debug_port} with server port {server_port}")
+			if config.take_screenshot:
+				self._start_screenshot_loop(config)
 			return process, ws_url
 			
 		except Exception as e:
