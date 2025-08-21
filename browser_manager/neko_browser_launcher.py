@@ -121,8 +121,6 @@ class NekoBrowserLauncher(BrowserLauncher):
 			f"done"
 		)
 
-
-
 		# Check if process is already running
 		check = subprocess.run(
 			["pgrep", "-af", "scrot /tmp/neko_screen.png"],
@@ -134,7 +132,17 @@ class NekoBrowserLauncher(BrowserLauncher):
 			return
 
 		# Start new background loop
-		subprocess.Popen(["bash", "-c", cmd])
+		self.process = subprocess.Popen(["bash", "-c", cmd])
+
+		import atexit, signal
+		def cleanup():
+			print(f"Stopping process: {self.process.pid}")
+			try:
+				os.kill(self.process.pid, signal.SIGKILL)  # gentler than -9
+			except ProcessLookupError:
+				pass
+
+		atexit.register(cleanup)
 		logger_config.info(f"[BG] Screenshot loop started every {interval}s → saving in {config.docker_name}/")
 
 	def choose_file_via_xdotool(self, config: BrowserConfig, file_path):
