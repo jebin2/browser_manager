@@ -2,7 +2,7 @@
 This module provides a robust context manager for launching and controlling a browser
 for automation with Playwright.
 """
-
+import os
 from typing import Optional
 from custom_logger import logger_config
 import subprocess
@@ -15,6 +15,9 @@ from .browser_launcher import BrowserLauncher
 from .page_manager import PageManager
 from .local_browser_launcher import LocalBrowserLauncher
 from .neko_browser_launcher import NekoBrowserLauncher
+from dotenv import load_dotenv
+if os.path.exists(".env"):
+	load_dotenv()
 
 class BrowserManager:
     """
