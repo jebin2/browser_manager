@@ -121,14 +121,16 @@ class NekoBrowserLauncher(BrowserLauncher):
 			f"done"
 		)
 
-		# Check if process is already running
+		# Check if a process is already running for this *specific* container
+		# We make the pgrep search string unique to the container
+		check_string = f"docker exec {config.docker_name} scrot"
 		check = subprocess.run(
-			["pgrep", "-af", "scrot /tmp/neko_screen.png"],
+			["pgrep", "-af", check_string],
 			stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
 		)
 
-		if check.stdout.strip():  # Found running process
-			logger_config.warning("[SKIP] Screenshot loop already running.")
+		if check.stdout.strip():  # Found running process for this container
+			logger_config.warning(f"[SKIP] Screenshot loop already running for {config.docker_name}.")
 			return
 
 		# Start new background loop
@@ -138,7 +140,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 		def cleanup():
 			print(f"Stopping process: {self.process.pid}")
 			try:
-				os.kill(self.process.pid, signal.SIGKILL)  # gentler than -9
+				os.kill(self.process.pid, signal.SIGKILL)
 			except ProcessLookupError:
 				pass
 
