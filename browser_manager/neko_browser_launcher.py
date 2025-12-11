@@ -105,14 +105,16 @@ class NekoBrowserLauncher(BrowserLauncher):
 			raise
 
 	def _start_screenshot_loop(self, config: BrowserConfig, interval=2):
-		# Build the exact command string
+		# Build the exact command string with atomic file operations
+		# Uses temp file + mv to prevent partial reads
 		cmd = (
 			f"while true; do "
 			f"if docker ps -a --format '{{{{.Names}}}}' | grep -q '^{config.docker_name}$'; then "
 			f"    TS=$(date +%Y%m%d_%H%M%S); "
 			f"    docker exec {config.docker_name} scrot /tmp/neko_$TS.png && "
 			f"    mkdir -p ./{config.docker_name} && "
-			f"    docker cp {config.docker_name}:/tmp/neko_$TS.png ./{config.docker_name}/screenshot.png; "
+			f"    docker cp {config.docker_name}:/tmp/neko_$TS.png ./{config.docker_name}/screenshot_tmp.png && "
+			f"    mv ./{config.docker_name}/screenshot_tmp.png ./{config.docker_name}/screenshot.png; "
 			f"else "
 			f"    echo '[STOP] Container {config.docker_name} not found. Exiting loop.'; "
 			f"    break; "
@@ -134,13 +136,13 @@ class NekoBrowserLauncher(BrowserLauncher):
 			return
 
 		# Start new background loop
-		self.process = subprocess.Popen(["bash", "-c", cmd])
+		self.screenshot_process = subprocess.Popen(["bash", "-c", cmd])
 
 		import atexit, signal
 		def cleanup():
-			print(f"Stopping process: {self.process.pid}")
+			print(f"Stopping screenshot process: {self.screenshot_process.pid}")
 			try:
-				os.kill(self.process.pid, signal.SIGKILL)
+				os.kill(self.screenshot_process.pid, signal.SIGKILL)
 			except ProcessLookupError:
 				pass
 
@@ -236,6 +238,18 @@ class NekoBrowserLauncher(BrowserLauncher):
 	def cleanup(self, config: BrowserConfig, process: subprocess.Popen) -> None:
 		"""Clean up Neko process."""
 		try:
+			# Stop screenshot loop if running
+			if hasattr(self, 'screenshot_process') and self.screenshot_process:
+				try:
+					self.screenshot_process.terminate()
+					self.screenshot_process.wait(timeout=5)
+					logger_config.info("Screenshot process stopped")
+				except subprocess.TimeoutExpired:
+					self.screenshot_process.kill()
+					logger_config.warning("Screenshot process force killed")
+				except Exception as e:
+					logger_config.warning(f"Error stopping screenshot process: {e}")
+			
 			self.stop_docker(config)
 			if process:
 				try:

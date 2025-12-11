@@ -123,6 +123,9 @@ class BrowserManager:
     
     def stop(self) -> None:
         """Stop the browser and clean up resources."""
+        if not self._is_started:
+            return
+        
         logger_config.info("Stopping browser manager...")
         
         # Close page
@@ -132,9 +135,23 @@ class BrowserManager:
             except Exception as e:
                 logger_config.warning(f"Error closing page: {e}")
         
-        # Close page manager
+        # Close page manager (closes context)
         if self.page_manager:
             self.page_manager.close_context()
+        
+        # Close persistent context if exists (when is_remote_debugging=False)
+        if hasattr(self, 'context') and self.context:
+            try:
+                self.context.close()
+            except Exception as e:
+                logger_config.warning(f"Error closing persistent context: {e}")
+        
+        # Close browser connection (important for CDP connections)
+        if self.browser:
+            try:
+                self.browser.close()
+            except Exception as e:
+                logger_config.warning(f"Error closing browser: {e}")
         
         # Stop Playwright
         if self.playwright:
@@ -173,7 +190,8 @@ class BrowserManager:
     
     def __del__(self) -> None:
         """Destructor cleanup."""
-        self.stop()
+        if self._is_started:
+            self.stop()
 
 
 # Factory function for common configurations
