@@ -174,7 +174,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 			# Type file path
 			subprocess.run([
 				'docker', 'exec', config.docker_name,
-				'xdotool', 'type', file_path
+				'xdotool', 'type', f'{config.neko_attach_folder}/{file_path}'
 			], timeout=5)
 			logger_config.info("Wait for commad finish.", seconds=1)
 			
