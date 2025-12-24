@@ -15,6 +15,7 @@ class BrowserConfig:
     use_neko: bool = True
     take_screenshot: bool = True
     neko_dir: str = os.getenv("NEKO_DIR", os.path.expanduser("~/git/neko-remote-debugging"))
+    neko_attach_folder: str = os.getenv("NEKO_ATTACH_FOLDER", "/home/neko/Downloads")
 
     chrome_flags: str = (
         "--disable-gpu "
