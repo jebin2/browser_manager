@@ -317,6 +317,86 @@ class NekoBrowserLauncher(BrowserLauncher):
 		except Exception as e:
 			raise BrowserLaunchError(f"Failed to launch Neko browser: {e}")
 	
+	def _graceful_close_chrome(self, config: BrowserConfig) -> bool:
+		"""Gracefully close Chrome inside the container to prevent 'Restore pages' popup.
+		
+		This sends SIGTERM to chrome processes which allows Chrome to save its state
+		and exit cleanly, preventing the crash recovery dialog on next launch.
+		"""
+		import time
+		
+		try:
+			# Check if container is running
+			result = subprocess.run(
+				["docker", "ps", "--format", "{{.Names}}"],
+				stdout=subprocess.PIPE,
+				stderr=subprocess.PIPE,
+				text=True,
+			)
+			if config.docker_name not in result.stdout.strip().splitlines():
+				logger_config.info(f"Container {config.docker_name} not running, skipping graceful close")
+				return True
+			
+			logger_config.info(f"Gracefully closing Chrome in container {config.docker_name}...")
+			
+			# Try multiple methods to gracefully close Chrome
+			# Method 1: Try killall (more commonly available than pkill)
+			kill_cmd = subprocess.run(
+				["docker", "exec", config.docker_name, "killall", "-TERM", "chrome"],
+				check=False,
+				timeout=5,
+				stdout=subprocess.PIPE,
+				stderr=subprocess.PIPE
+			)
+			
+			# Method 2: If killall failed, try using shell to find and kill processes
+			if kill_cmd.returncode != 0:
+				logger_config.info("killall not available, trying shell-based kill...")
+				# Use shell command to find chrome PIDs and send SIGTERM
+				subprocess.run(
+					["docker", "exec", config.docker_name, "sh", "-c", 
+					 "for pid in $(ps aux | grep -i chrome | grep -v grep | awk '{print $2}'); do kill -TERM $pid 2>/dev/null; done"],
+					check=False,
+					timeout=10,
+					stdout=subprocess.PIPE,
+					stderr=subprocess.PIPE
+				)
+			
+			# Wait for Chrome to close gracefully
+			time.sleep(3)
+			
+			# Verify Chrome has exited using ps
+			check_result = subprocess.run(
+				["docker", "exec", config.docker_name, "sh", "-c",
+				 "ps aux | grep -i chrome | grep -v grep"],
+				stdout=subprocess.PIPE,
+				stderr=subprocess.PIPE,
+				text=True,
+				timeout=5
+			)
+			
+			if check_result.stdout.strip():
+				logger_config.warning("Chrome still running, forcing kill...")
+				subprocess.run(
+					["docker", "exec", config.docker_name, "sh", "-c",
+					 "for pid in $(ps aux | grep -i chrome | grep -v grep | awk '{print $2}'); do kill -9 $pid 2>/dev/null; done"],
+					check=False,
+					timeout=10,
+					stdout=subprocess.PIPE,
+					stderr=subprocess.PIPE
+				)
+				time.sleep(1)
+			
+			logger_config.info("Chrome closed gracefully")
+			return True
+			
+		except subprocess.TimeoutExpired:
+			logger_config.warning("Timeout during graceful Chrome close")
+			return False
+		except Exception as e:
+			logger_config.warning(f"Error during graceful Chrome close: {e}")
+			return False
+
 	def cleanup(self, config: BrowserConfig, process: subprocess.Popen) -> None:
 		"""Clean up Neko process."""
 		try:
@@ -331,6 +411,9 @@ class NekoBrowserLauncher(BrowserLauncher):
 					logger_config.warning("Screenshot process force killed")
 				except Exception as e:
 					logger_config.warning(f"Error stopping screenshot process: {e}")
+			
+			# Gracefully close Chrome first to prevent "Restore pages" popup
+			self._graceful_close_chrome(config)
 			
 			self.stop_docker(config)
 			if process:

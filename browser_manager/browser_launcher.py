@@ -8,6 +8,7 @@ import time
 import glob
 import os
 import shutil
+import json
 
 class BrowserLauncher(ABC):
     """Abstract base class for browser launchers."""
@@ -60,6 +61,9 @@ class BrowserLauncher(ABC):
 
         profile_path = config.user_data_dir
 
+        # Fix Chrome exit state to prevent "Restore pages" popup
+        self._fix_chrome_exit_state(profile_path)
+
         # Remove Singleton* files in user_data_dir
         singleton_files = glob.glob(os.path.join(profile_path, "Singleton*"))
         for file_path in singleton_files:
@@ -104,3 +108,47 @@ class BrowserLauncher(ABC):
                 logger_config.success(f"Removed {gpu_cache_path}")
             except Exception as e:
                 logger_config.error(f"Failed to remove {gpu_cache_path}: {e}")
+
+    def _fix_chrome_exit_state(self, profile_path: str):
+        """
+        Fix Chrome's exit state in the Preferences file to prevent "Restore pages" popup.
+        
+        When Chrome crashes or is killed, it marks exit_type as "Crashed" in the Preferences file.
+        This method resets it to "Normal" and sets exited_cleanly to true.
+        """
+        # Chrome stores preferences in Default/Preferences
+        prefs_file = os.path.join(profile_path, "Default", "Preferences")
+        
+        if not os.path.exists(prefs_file):
+            logger_config.info(f"No Preferences file found at {prefs_file}, skipping exit state fix")
+            return
+        
+        try:
+            with open(prefs_file, 'r', encoding='utf-8') as f:
+                prefs = json.load(f)
+            
+            modified = False
+            
+            # Fix profile.exit_type
+            if 'profile' not in prefs:
+                prefs['profile'] = {}
+            if prefs['profile'].get('exit_type') != 'Normal':
+                prefs['profile']['exit_type'] = 'Normal'
+                modified = True
+                
+            # Fix profile.exited_cleanly
+            if not prefs['profile'].get('exited_cleanly', True):
+                prefs['profile']['exited_cleanly'] = True
+                modified = True
+            
+            if modified:
+                with open(prefs_file, 'w', encoding='utf-8') as f:
+                    json.dump(prefs, f, indent=2)
+                logger_config.success(f"Fixed Chrome exit state in {prefs_file}")
+            else:
+                logger_config.info("Chrome exit state already clean")
+                
+        except json.JSONDecodeError as e:
+            logger_config.warning(f"Failed to parse Preferences file: {e}")
+        except Exception as e:
+            logger_config.warning(f"Failed to fix Chrome exit state: {e}")
