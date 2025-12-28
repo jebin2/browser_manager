@@ -56,6 +56,7 @@ class BrowserConfig:
             f'{"--network=host" if self.host_network else ""} '
             f'{port_map_resolved} '
             '--cap-add=SYS_ADMIN '
+            f'--user {os.getuid()}:{os.getgid()} '
             f'-v {self.user_data_dir or "/tmp/neko-profile"}:/home/neko/chrome-profile '
             f'{self.additionl_docker_flag} '
             f'-e NEKO_CHROME_FLAGS="{self.chrome_flags}" '
