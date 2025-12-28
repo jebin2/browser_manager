@@ -58,15 +58,94 @@ class NekoBrowserLauncher(BrowserLauncher):
 	def _docker_image_exists(self, image_name: str) -> bool:
 		try:
 			logger_config.info("Checking for docker image exists.")
-			subprocess.run(
+			result = subprocess.run(
 				["docker", "images", "-q", image_name],
 				capture_output=True,
 				text=True,
 				check=True
 			)
-			return True
+			# Check if the result has any output (image ID)
+			return bool(result.stdout.strip())
 		except subprocess.CalledProcessError:
 			return False
+
+	def _build_neko_image(self, application: str = "chrome-remote-debug", base_image: str = "ghcr.io/m1k1o/neko/base:latest") -> bool:
+		"""
+		Clone neko-apps repo to /tmp, build the specified application image, and clean up.
+		
+		Args:
+			application: The neko application to build (default: chrome-remote-debug)
+			base_image: The base image to use for building (default: ghcr.io/m1k1o/neko/base:latest)
+		
+		Returns:
+			True if build was successful, False otherwise
+		"""
+		neko_apps_dir = "/tmp/neko-apps"
+		neko_repo_url = "https://github.com/jebin2/neko-apps.git"
+		
+		try:
+			# Clean up any existing clone
+			if os.path.exists(neko_apps_dir):
+				logger_config.info(f"Removing existing neko-apps directory: {neko_apps_dir}")
+				shutil.rmtree(neko_apps_dir)
+			
+			# Clone the repository
+			logger_config.info(f"Cloning neko-apps from {neko_repo_url} to {neko_apps_dir}")
+			clone_result = subprocess.run(
+				["git", "clone", neko_repo_url, neko_apps_dir],
+				capture_output=True,
+				text=True,
+				check=True
+			)
+			logger_config.info(f"Clone successful: {clone_result.stdout}")
+			
+			# Run the build script
+			build_script = os.path.join(neko_apps_dir, "build")
+			if not os.path.exists(build_script):
+				logger_config.error(f"Build script not found at {build_script}")
+				return False
+			
+			# Make build script executable
+			os.chmod(build_script, 0o755)
+			
+			build_cmd = [
+				build_script,
+				"-y",
+				"--application", application,
+				"--base_image", base_image
+			]
+			
+			logger_config.info(f"Running build command: {' '.join(build_cmd)}")
+			build_result = subprocess.run(
+				build_cmd,
+				cwd=neko_apps_dir,
+				capture_output=True,
+				text=True,
+				check=True
+			)
+			logger_config.info(f"Build output: {build_result.stdout}")
+			if build_result.stderr:
+				logger_config.warning(f"Build stderr: {build_result.stderr}")
+			
+			logger_config.info("Neko image built successfully!")
+			return True
+			
+		except subprocess.CalledProcessError as e:
+			logger_config.error(f"Build failed with return code {e.returncode}")
+			logger_config.error(f"stdout: {e.stdout}")
+			logger_config.error(f"stderr: {e.stderr}")
+			return False
+		except Exception as e:
+			logger_config.error(f"Error during neko image build: {e}")
+			return False
+		finally:
+			# Clean up: remove the cloned repository
+			if os.path.exists(neko_apps_dir):
+				logger_config.info(f"Cleaning up: removing {neko_apps_dir}")
+				try:
+					shutil.rmtree(neko_apps_dir)
+				except Exception as e:
+					logger_config.warning(f"Failed to clean up {neko_apps_dir}: {e}")
 
 	def stop_docker(self, config: BrowserConfig) -> bool:
 		try:
@@ -192,9 +271,12 @@ class NekoBrowserLauncher(BrowserLauncher):
 
 	def launch(self, config: BrowserConfig) -> tuple[subprocess.Popen, str]:
 		"""Launch Neko browser container."""
-		if not self._docker_image_exists(config.neko_docker_cmd.split(" ")[-1]):
-			logger_config.info("Please Follow This to install: https://github.com/jebin2/neko-apps/blob/master/chrome-remote-debug/README.md")
-			raise BrowserLaunchError(f"Neko directory not found: {config.neko_dir}")
+		image_name = config.neko_docker_cmd.split(" ")[-1]
+		if not self._docker_image_exists(image_name):
+			logger_config.info(f"Docker image {image_name} not found. Attempting to build...")
+			if not self._build_neko_image():
+				logger_config.error("Failed to build neko image. Please follow: https://github.com/jebin2/neko-apps/blob/master/chrome-remote-debug/README.md")
+				raise BrowserLaunchError(f"Failed to build neko Docker image: {image_name}")
 
 		self.stop_docker(config)
 		self.clean_browser_profile(config)
