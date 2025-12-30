@@ -57,21 +57,18 @@ class BrowserManager:
         self._is_started = False
     
     def _setup_user_data_dir(self) -> None:
-        """Setup user data directory.
-        
-        If user_data_dir is not specified, creates a temp directory.
-        If user_data_dir is specified but doesn't exist, creates it.
-        This ensures the directory is created with correct ownership
-        when run on the host before Docker.
-        """
+        """Setup user data directory safely for Docker + Chrome."""
         if not self.config.user_data_dir:
             self.config.user_data_dir = tempfile.mkdtemp(prefix="browser_manager_")
+            os.chmod(self.config.user_data_dir, 0o755)  # 🔥 important
             self._temp_dir_created = True
         else:
-            # Create directory if it doesn't exist (with correct host ownership)
             if not os.path.exists(self.config.user_data_dir):
                 os.makedirs(self.config.user_data_dir, exist_ok=True)
-                logger_config.info(f"Created user data directory: {self.config.user_data_dir}")
+                os.chmod(self.config.user_data_dir, 0o755)  # 🔥 important
+                logger_config.info(
+                    f"Created user data directory: {self.config.user_data_dir}"
+                )
             self._temp_dir_created = False
     
     def _create_launcher(self) -> BrowserLauncher:
