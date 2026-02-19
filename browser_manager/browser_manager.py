@@ -130,9 +130,14 @@ class BrowserManager:
     
     def stop(self) -> None:
         """Stop the browser and clean up resources."""
-        if not self._is_started:
+        # Do NOT guard on _is_started here. start() sets _is_started only at the
+        # very end, so a partial start (e.g. playwright opened but Docker failed)
+        # leaves _is_started=False while resources are already allocated. We must
+        # always attempt cleanup so playwright subprocesses and Docker ports are
+        # released even when start() raised an exception.
+        if not self._is_started and not self.playwright and not self.browser_process:
             return
-        
+
         logger_config.info("Stopping browser manager...")
         
         # Close page

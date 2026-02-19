@@ -615,7 +615,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 			# always sleep between retries regardless of error type
 			backoff = (2 ** attempt) * random.uniform(1.5, 3.5)
 
-			if "port is already allocated" in stderr:
+			if "port is already allocated" in stderr or "address already in use" in stderr:
 				logger_config.warning(
 					f"[Retry {attempt + 1}/{max_retries}] Port conflict — "
 					f"reallocating and retrying in {backoff:.1f}s..."
