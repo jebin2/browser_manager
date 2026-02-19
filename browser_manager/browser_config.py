@@ -27,7 +27,8 @@ class BrowserConfig:
 
     port_map_template: List[str] = field(default_factory=lambda: [
         "-p server_port:8080",
-        "-p debug_port:9223"
+        "-p debug_port:9223",
+        "-p 52000-52100:52000-52100/udp"
     ])
 
     host_network: bool = False
@@ -59,6 +60,8 @@ class BrowserConfig:
             # f'--user {os.getuid()}:{os.getgid()} '
             f'-v {self.user_data_dir or "/tmp/neko-profile"}:/home/neko/chrome-profile '
             f'{self.additionl_docker_flag} '
+            '-e NEKO_WEBRTC_EPR=52000-52100 '
+            '-e NEKO_WEBRTC_NAT1TO1=127.0.0.1 '
             f'-e NEKO_CHROME_FLAGS="{self.chrome_flags}" '
             '-e NEKO_DISABLE_AUDIO=1 '
             'ghcr.io/m1k1o/neko-apps/chrome-remote-debug:latest'
