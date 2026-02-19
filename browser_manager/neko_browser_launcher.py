@@ -613,7 +613,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 
 			# Calculate backoff before deciding what to do —
 			# always sleep between retries regardless of error type
-			backoff = (2 ** attempt) * random.uniform(0.5, 1.5)
+			backoff = (2 ** attempt) * random.uniform(1.5, 3.5)
 
 			if "port is already allocated" in stderr:
 				logger_config.warning(
