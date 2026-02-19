@@ -131,11 +131,6 @@ class BrowserConfig:
     webrtc_port_start: int = 52000
     webrtc_port_range_size: int = _WEBRTC_RANGE_SIZE
 
-    # ── Port search starting points (used by NekoBrowserLauncher allocator) ───
-    starting_server_port_to_check: int = 8081
-    starting_debug_port_to_check: int = 9224
-    starting_webrtc_port_to_check: int = 52000
-
     # ─────────────────────────────────────────────────────────────────────────
 
     @property
