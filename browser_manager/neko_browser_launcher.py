@@ -136,7 +136,7 @@ from typing import Optional
 from .browser_config import BrowserConfig, _WEBRTC_RANGE_SIZE
 from .browser_launcher import BrowserLauncher
 from .browser_launch_error import BrowserLaunchError
-
+import random
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Port manager — all state is module-level, shared across all launcher instances
@@ -572,47 +572,75 @@ class NekoBrowserLauncher(BrowserLauncher):
 	# Main launch
 	# ─────────────────────────────────────────────
 
-	def _launch_with_retry(self, config: BrowserConfig, max_retries: int = 3) -> subprocess.Popen:
+	def _launch_with_retry(self, config: BrowserConfig, max_retries: int = 3, timeout: int = 30) -> subprocess.Popen:
 		"""
 		Start the Docker container via Popen with automatic port reallocation
 		on conflict. Returns the Popen handle on success.
 
-		This is the single place docker run is executed — launch() must not
-		call subprocess.Popen separately.
+		Retry strategy — exponential backoff with jitter:
+		Attempt 1 failure → wait ~1s  (1 * random 0.5–1.5)
+		Attempt 2 failure → wait ~2s  (2 * random 0.5–1.5)
+		Attempt 3 failure → wait ~4s  (4 * random 0.5–1.5)
+
+		Jitter prevents multiple concurrent launchers from retrying in lockstep
+		and hammering Docker/the port allocator simultaneously.
+
+		Args:
+		max_retries: Maximum number of launch attempts.
+		timeout:     Max seconds to wait for `docker run` to return.
+					Prevents hanging forever if Docker daemon is unresponsive.
 		"""
 		for attempt in range(max_retries):
-			# Use Popen so we get a process handle back
-			process = subprocess.Popen(
-				config.neko_docker_cmd,
-				stdout=subprocess.PIPE,
-				stderr=subprocess.PIPE,
-				text=True,
-				env={**os.environ, 'PYTHONUNBUFFERED': '1'},
-				shell=True
-			)
-			stdout, stderr = process.communicate()
+			try:
+				process = subprocess.Popen(
+					config.neko_docker_cmd,
+					stdout=subprocess.PIPE,
+					stderr=subprocess.PIPE,
+					text=True,
+					env={**os.environ, 'PYTHONUNBUFFERED': '1'},
+					shell=True
+				)
+				stdout, stderr = process.communicate(timeout=timeout)
+			except subprocess.TimeoutExpired:
+				process.kill()
+				process.communicate()
+				raise BrowserLaunchError(
+					f"Docker run timed out after {timeout}s — daemon may be unresponsive."
+				)
 
 			if process.returncode == 0:
 				return process
 
+			# Calculate backoff before deciding what to do —
+			# always sleep between retries regardless of error type
+			backoff = (2 ** attempt) * random.uniform(0.5, 1.5)
+
 			if "port is already allocated" in stderr:
 				logger_config.warning(
-					f"[Retry {attempt + 1}/{max_retries}] Port conflict — reallocating..."
+					f"[Retry {attempt + 1}/{max_retries}] Port conflict — "
+					f"reallocating and retrying in {backoff:.1f}s..."
 				)
 				_release_ports(config.docker_name)
 				s, d, w = _allocate_ports(config.docker_name)
 				config.server_port       = s
 				config.debug_port        = d
 				config.webrtc_port_start = w
+
 			elif "Conflict. The container name" in stderr:
-				# Container wasn't fully removed yet — force remove and retry
 				logger_config.warning(
-					f"[Retry {attempt + 1}/{max_retries}] Container name conflict — force removing..."
+					f"[Retry {attempt + 1}/{max_retries}] Container name conflict — "
+					f"force removing and retrying in {backoff:.1f}s..."
 				)
-				subprocess.run(["docker", "rm", "-f", config.docker_name], check=False,
-								stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+				subprocess.run(
+					["docker", "rm", "-f", config.docker_name], check=False,
+					stdout=subprocess.PIPE, stderr=subprocess.PIPE
+				)
+
 			else:
+				# Non-retryable error — fail immediately, no point waiting
 				raise BrowserLaunchError(f"Docker failed: {stderr}")
+
+			time.sleep(backoff)
 
 		raise BrowserLaunchError(f"Docker failed after {max_retries} retries.")
 
