@@ -18,13 +18,14 @@ class PageManager:
         
         current_page = pages[-1]
         if self.close_other_tabs:
-            self._close_other_tabs(current_page, pages)
+            self.close_all_other_pages(current_page)
         
         current_page.bring_to_front()
         return current_page
     
-    def _close_other_tabs(self, current_page: Page, pages: List[Page]) -> None:
+    def close_all_other_pages(self, current_page: Page) -> None:
         """Close all tabs except the current one."""
+        pages = self.context.pages
         for page in pages:
             if page != current_page:
                 try:

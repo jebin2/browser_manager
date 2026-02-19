@@ -186,6 +186,23 @@ class BrowserManager:
         if not self._is_started:
             raise RuntimeError("Browser not started")
         return self.page_manager.new_page()
+
+    def get_fresh_page(self, close_others: bool = True) -> Page:
+        """
+        Get a fresh page for a new session.
+        If browser is not started, starts it.
+        If started, creates a new page and optionally closes others.
+        """
+        if not self._is_started:
+            return self.start()
+        
+        # Browser is running, Create new page
+        self.page = self.page_manager.new_page()
+        
+        if close_others:
+            self.page_manager.close_all_other_pages(self.page)
+            
+        return self.page
     
     def __enter__(self) -> Page:
         """Context manager entry."""
