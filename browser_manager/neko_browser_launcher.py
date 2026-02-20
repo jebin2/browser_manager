@@ -748,6 +748,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 			logger_config.warning(f"[SKIP] Screenshot loop already running for {config.docker_name}.")
 			return
 
+		logger_config.info(f"Command to run: {cmd}")
 		self.screenshot_process = subprocess.Popen(["bash", "-c", cmd])
 
 		import atexit, signal
