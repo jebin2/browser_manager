@@ -590,10 +590,12 @@ class NekoBrowserLauncher(BrowserLauncher):
 		timeout:     Max seconds to wait for `docker run` to return.
 					Prevents hanging forever if Docker daemon is unresponsive.
 		"""
+		neko_docker_cmd = config.neko_docker_cmd
+		logger_config.info(f"Launching Docker container with command: {neko_docker_cmd}")
 		for attempt in range(max_retries):
 			try:
 				process = subprocess.Popen(
-					config.neko_docker_cmd,
+					neko_docker_cmd,
 					stdout=subprocess.PIPE,
 					stderr=subprocess.PIPE,
 					text=True,
@@ -748,7 +750,6 @@ class NekoBrowserLauncher(BrowserLauncher):
 			logger_config.warning(f"[SKIP] Screenshot loop already running for {config.docker_name}.")
 			return
 
-		logger_config.info(f"Command to run: {cmd}")
 		self.screenshot_process = subprocess.Popen(["bash", "-c", cmd])
 
 		import atexit, signal
