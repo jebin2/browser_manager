@@ -659,8 +659,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 				[
 					"docker", "run", "--rm",
 					"-v", f"{profile_path}:/neko_profile",
-					"--entrypoint", "sh",
-					image_name, "-c",
+					image_name, "sh", "-c",
 					"chmod -R 777 /neko_profile 2>/dev/null; true"
 				],
 				capture_output=True, text=True, timeout=60, check=False
