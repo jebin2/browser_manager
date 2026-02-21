@@ -646,6 +646,28 @@ class NekoBrowserLauncher(BrowserLauncher):
 
 		raise BrowserLaunchError(f"Docker failed after {max_retries} retries.")
 
+	def _docker_fix_profile_permissions(self, profile_path: str, image_name: str):
+		"""
+		Fix profile directory permissions by running chmod -R 777 as root inside
+		a Docker container. This handles UID mismatch between the host user and
+		the neko user inside the container — files created by the container cannot
+		always be deleted by the host user, but root inside Docker can chmod them.
+		"""
+		try:
+			logger_config.info(f"Fixing profile permissions via Docker: {profile_path}")
+			subprocess.run(
+				[
+					"docker", "run", "--rm",
+					"-v", f"{profile_path}:/neko_profile",
+					"--entrypoint", "sh",
+					image_name, "-c",
+					"chmod -R 777 /neko_profile 2>/dev/null; true"
+				],
+				capture_output=True, text=True, timeout=60, check=False
+			)
+		except Exception as e:
+			logger_config.warning(f"Docker profile permission fix failed: {e}")
+
 	def launch(self, config: BrowserConfig) -> tuple[subprocess.Popen, str]:
 		"""
         Full launch sequence for a Neko browser container:
@@ -672,6 +694,11 @@ class NekoBrowserLauncher(BrowserLauncher):
 
 		# Stop any existing container + release its ports
 		self.stop_docker(config)
+
+		# Fix profile directory permissions via Docker so host user can clean up
+		# files created by the container's neko user (avoids UID mismatch issues)
+		if config.user_data_dir and os.path.exists(config.user_data_dir):
+			self._docker_fix_profile_permissions(config.user_data_dir, image_name)
 
 		# Allocate unique ports and apply to config
 		server_port, debug_port, webrtc_port_start = _allocate_ports(config.docker_name)
