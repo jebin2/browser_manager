@@ -757,7 +757,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 			f"if docker ps -a --format '{{{{.Names}}}}' | grep -q '^{config.docker_name}$'; then "
 			f"	docker exec {config.docker_name} scrot /tmp/neko_{config.docker_name}.png && "
 			f"	mkdir -p ./{config.docker_name} && "
-			f"	docker cp {config.docker_name}:/tmp/neko_{config.docker_name}.png ./{config.docker_name}/screenshot_tmp.png && "
+			f"	docker cp {config.docker_name}:/tmp/neko_{config.docker_name}.png ./{config.docker_name}/screenshot_tmp.png >/dev/null 2>&1 && "
 			f"	mv ./{config.docker_name}/screenshot_tmp.png ./{config.docker_name}/screenshot.png; "
 			f"else "
 			f"	echo '[STOP] Container {config.docker_name} not found. Exiting.'; "
