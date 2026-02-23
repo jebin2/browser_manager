@@ -117,6 +117,7 @@ class BrowserManager:
             
             # Navigate to URL
             self.page.goto(self.config.url)
+            self.page.bring_to_front()
             # self.page.wait_for_load_state("networkidle", timeout=self.config.connection_timeout * 1000)
             
             self._is_started = True
