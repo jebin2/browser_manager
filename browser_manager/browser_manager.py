@@ -121,6 +121,11 @@ class BrowserManager:
             # self.page.wait_for_load_state("networkidle", timeout=self.config.connection_timeout * 1000)
             
             self._is_started = True
+            
+            # Start CDP screenshot loop if launcher supports it (Neko containers)
+            if self.config.take_screenshot:
+                self.launcher.start_cdp_screenshot_loop(self.page, self.config)
+            
             logger_config.success("Browser started successfully")
             return self.page
             

@@ -788,6 +788,39 @@ class NekoBrowserLauncher(BrowserLauncher):
 		atexit.register(_stop_screenshot)
 		logger_config.info(f"[BG] Screenshot loop started — every {interval}s → ./{config.docker_name}/screenshot.png")
 
+	def start_cdp_screenshot_loop(self, page, config: BrowserConfig, interval: int = 2):
+		"""
+		Background Python thread that captures screenshots via Playwright's
+		page.screenshot() (CDP protocol) every `interval` seconds.
+
+		Unlike scrot (which captures the X11 display), this captures exactly
+		what Chrome has rendered via CDP — reliable even when the X11 display
+		lags behind on slower VPS environments.
+
+		Saves to ./{docker_name}/screenshot_cdp.png alongside the scrot output.
+		"""
+		screenshot_dir = f"./{config.docker_name}"
+		os.makedirs(screenshot_dir, exist_ok=True)
+
+		def _cdp_loop():
+			while True:
+				try:
+					if page.is_closed():
+						logger_config.info("[CDP] Page closed — stopping CDP screenshot loop.")
+						break
+					tmp_path = os.path.join(screenshot_dir, "screenshot_cdp_tmp.png")
+					final_path = os.path.join(screenshot_dir, "screenshot_cdp.png")
+					page.screenshot(path=tmp_path)
+					os.replace(tmp_path, final_path)
+				except Exception as e:
+					logger_config.debug(f"[CDP] Screenshot failed: {e}")
+					break
+				time.sleep(interval)
+
+		self._cdp_screenshot_thread = threading.Thread(target=_cdp_loop, daemon=True)
+		self._cdp_screenshot_thread.start()
+		logger_config.info(f"[BG] CDP screenshot loop started — every {interval}s → ./{config.docker_name}/screenshot_cdp.png")
+
 	# ─────────────────────────────────────────────
 	# File chooser helper
 	# ─────────────────────────────────────────────
