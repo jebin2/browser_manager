@@ -63,7 +63,7 @@ def scroll_to_element(page: Page, text_excerpt: str, offset_y: int = -100) -> bo
     offset_y: Add some padding to the top (negative means scroll higher).
     """
     js_code = f"""
-    (function() {{
+    new Promise((resolve) => {{
         const excerpt = {json.dumps(text_excerpt)};
         const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
         let node;
@@ -78,17 +78,37 @@ def scroll_to_element(page: Page, text_excerpt: str, offset_y: int = -100) -> bo
 
         if (targetEl) {{
             const rect = targetEl.getBoundingClientRect();
-            const targetY = window.scrollY + rect.top + {offset_y};
-            window.scrollTo({{top: targetY, behavior: 'smooth'}});
-            return true;
+            const startY = window.scrollY;
+            const targetY = startY + rect.top + {offset_y};
+            const distance = targetY - startY;
+            const durationMs = 800;
+            const startTime = performance.now();
+            
+            function easeInOutQuad(t, b, c, d) {{
+                t /= d/2;
+                if (t < 1) return c/2*t*t + b;
+                t--;
+                return -c/2 * (t*(t-2) - 1) + b;
+            }}
+
+            function scrollStep(timestamp) {{
+                const elapsed = Math.max(0, timestamp - startTime);
+                if (elapsed < durationMs) {{
+                    const nextY = easeInOutQuad(elapsed, startY, distance, durationMs);
+                    window.scrollTo(0, nextY);
+                    window.requestAnimationFrame(scrollStep);
+                }} else {{
+                    window.scrollTo(0, targetY);
+                    resolve(true);
+                }}
+            }}
+            window.requestAnimationFrame(scrollStep);
+        }} else {{
+            resolve(false);
         }}
-        return false;
-    }})();
+    }});
     """
     success = page.evaluate(js_code)
-    if success:
-        # Give smooth scrolling time to settle
-        time.sleep(0.4)
     return success
 
 def scroll_continuous(page: Page, pixels_per_second: float, duration_seconds: float):
