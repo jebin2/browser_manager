@@ -140,14 +140,8 @@ def capture_viewport_frames(
     for _ in range(total_frames):
         screenshot_path = f"{output_dir}/frame_{current_counter:06d}.png"
         
-        # We capture specifically the viewport area. By default screenshot captures what is visible
-        # but to ensure exact dimensions, we map the clip.
-        clip_y = page.evaluate("window.scrollY")
-        page.screenshot(path=screenshot_path, clip={
-            "x": 0, "y": clip_y,
-            "width": viewport_width,
-            "height": viewport_height
-        })
+        # We capture specifically the viewport area.
+        page.screenshot(path=screenshot_path)
 
         # Apply any overlays or watermarks
         if frame_callback:
