@@ -5,10 +5,13 @@ from playwright.sync_api import Browser, Page
 class PageManager:
     """Manages Playwright page operations."""
     
-    def __init__(self, browser: Browser, close_other_tabs: bool = True):
+    def __init__(self, browser: Browser, close_other_tabs: bool = True, **kwargs):
         self.browser = browser
         self.close_other_tabs = close_other_tabs
-        self.context = browser.contexts[0] if browser.contexts else browser.new_context()
+        if kwargs:
+            self.context = browser.new_context(**kwargs)
+        else:
+            self.context = browser.contexts[0] if browser.contexts else browser.new_context()
     
     def get_current_page(self) -> Page:
         """Get the current active page."""

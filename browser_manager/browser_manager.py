@@ -94,6 +94,8 @@ class BrowserManager:
                 # Launch browser
                 self.browser_process, ws_url = self.launcher.launch(self.config)
                 self.browser = self.playwright.chromium.connect_over_cdp(ws_url)
+                # Pass kwarg instructions directly to the PageManager for new remote contexts
+                self.page_manager = PageManager(self.browser, self.config.close_other_tabs, **context_kwargs)
             else:
                 BrowserLauncher.clean_browser_profile(self, self.config)
                 # No remote debugging - use persistent context
@@ -113,9 +115,10 @@ class BrowserManager:
                 
                 self.context = self.playwright.chromium.launch_persistent_context(**merged_kwargs)
                 self.browser = self.context.browser
+                
+                # Setup page management (persistent context args are already applied above)
+                self.page_manager = PageManager(self.browser, self.config.close_other_tabs)
             
-            # Setup page management
-            self.page_manager = PageManager(self.browser, self.config.close_other_tabs)
             self.page = self.page_manager.get_current_page()
             
             # Navigate to URL
