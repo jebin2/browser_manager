@@ -144,6 +144,9 @@ def capture_viewport_frames(
         # We capture specifically the viewport area.
         page.screenshot(path=screenshot_path)
 
+        if current_counter % 10 == 0:
+            logger_config.debug(f"Captured {current_counter - start_frame_counter + 1}/{total_frames} frames for current segment...", overwrite=True)
+
         # Apply any overlays or watermarks
         if frame_callback:
             frame_callback(screenshot_path)
