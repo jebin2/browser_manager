@@ -138,6 +138,7 @@ def capture_viewport_frames(
     current_counter = start_frame_counter
 
     for _ in range(total_frames):
+        start_time = time.perf_counter()
         screenshot_path = f"{output_dir}/frame_{current_counter:06d}.png"
         
         # We capture specifically the viewport area.
@@ -150,6 +151,9 @@ def capture_viewport_frames(
         current_counter += 1
         
         # Attempt to keep timing roughly consistent
-        time.sleep(1.0 / fps)
+        elapsed = time.perf_counter() - start_time
+        sleep_time = max(0, (1.0 / fps) - elapsed)
+        if sleep_time > 0:
+            time.sleep(sleep_time)
 
     return current_counter
