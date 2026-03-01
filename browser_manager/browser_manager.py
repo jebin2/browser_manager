@@ -78,8 +78,9 @@ class BrowserManager:
         else:
             return LocalBrowserLauncher(self.window_manager)
     
-    def start(self) -> Page:
-        """Start the browser and return a Page object."""
+    def start(self, **context_kwargs) -> Page:
+        """Start the browser and return a Page object.
+        Accepts context_kwargs like record_video_dir and record_video_size."""
         if self._is_started:
             return self.page
         
@@ -100,15 +101,17 @@ class BrowserManager:
                     "--disable-blink-features=AutomationControlled",
                     "--window-position=0,0"  # Optional: set window position
                 ]
-
-                launch_args = self.config.chrome_flags.split() + self.config.extra_args + automation_args
-                self.context = self.playwright.chromium.launch_persistent_context(
-                    user_data_dir=self.config.user_data_dir,
-                    executable_path=self.config.browser_executable,
-                    headless=self.config.headless,
-                    args=launch_args,
-                    viewport={'width': 1280, 'height': 720}
-                )
+                # Merge custom video recording args if any
+                merged_kwargs = {
+                    "user_data_dir": self.config.user_data_dir,
+                    "executable_path": self.config.browser_executable,
+                    "headless": self.config.headless,
+                    "args": launch_args,
+                    "viewport": {'width': 1280, 'height': 720}
+                }
+                merged_kwargs.update(context_kwargs)
+                
+                self.context = self.playwright.chromium.launch_persistent_context(**merged_kwargs)
                 self.browser = self.context.browser
             
             # Setup page management
