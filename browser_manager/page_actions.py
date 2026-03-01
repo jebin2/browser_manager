@@ -4,34 +4,59 @@ from typing import Callable, Optional
 from custom_logger import logger_config
 from playwright.sync_api import Page
 
-def find_and_highlight_element(page: Page, text_excerpt: str, color: str = '#FFE066') -> bool:
+def find_and_highlight_element(page: Page, text_excerpt: str, color: str = '#00B4D8') -> bool:
     """
     Finds a DOM element containing the given excerpt and highlights it with a background color.
     Uses accurate JS DOM tree walking to locate the text node.
     """
-    # JS function to find element, highlight and smooth scroll to it
+    # JS function to find text node, wrap matching text in <mark>, and style it.
     js_code = f"""
     (function() {{
         const excerpt = {json.dumps(text_excerpt)};
+        const fullText = excerpt.trim();
+        const fallbackText = excerpt.substring(0, 50).trim();
+        if (!fallbackText) return false;
+
         const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
         let node;
-        let targetEl = null;
+        let foundNode = null;
+        let matchText = fullText;
 
         while (node = walker.nextNode()) {{
-            if (node.textContent.includes(excerpt.substring(0, 50))) {{
-                targetEl = node.parentElement;
+            if (node.textContent.includes(fullText)) {{
+                foundNode = node;
+                matchText = fullText;
                 break;
+            }} else if (node.textContent.includes(fallbackText) && !foundNode) {{
+                // Save it as a fallback in case the full text spans across tags
+                foundNode = node;
+                matchText = fallbackText;
             }}
         }}
 
-        if (targetEl) {{
-            // Highlight
-            targetEl.style.backgroundColor = '{color}';
-            targetEl.style.transition = 'background-color 0.3s ease';
-            targetEl.style.borderRadius = '3px';
-            targetEl.setAttribute('data-atv-highlighted', 'true');
-            targetEl._atv_highlighted = true;
-            return true;
+        if (foundNode) {{
+            const index = foundNode.nodeValue.indexOf(matchText);
+            if(index >= 0) {{
+                const before = document.createTextNode(foundNode.nodeValue.substring(0, index));
+                const after = document.createTextNode(foundNode.nodeValue.substring(index + matchText.length));
+                
+                const mark = document.createElement('mark');
+                mark.textContent = matchText;
+                mark.style.backgroundColor = '{color}';
+                mark.style.color = '#ffffff';
+                mark.style.borderRadius = '4px';
+                mark.style.padding = '2px 4px';
+                mark.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                mark.setAttribute('data-atv-highlighted', 'true');
+                
+                const parentNode = foundNode.parentNode;
+                parentNode.insertBefore(before, foundNode);
+                parentNode.insertBefore(mark, foundNode);
+                parentNode.insertBefore(after, foundNode);
+                parentNode.removeChild(foundNode);
+                
+                return true;
+            }}
         }}
         return false;
     }})();
@@ -43,14 +68,17 @@ def find_and_highlight_element(page: Page, text_excerpt: str, color: str = '#FFE
 
 def remove_highlights(page: Page):
     """
-    Removes the background color specifically from any elements we highlighted previously.
+    Removes the <mark> tags we inserted by unwrapping the text back into the parent node.
     """
     js_code = """
     (function() {
-        document.querySelectorAll('[data-atv-highlighted]').forEach(el => {
-            el.style.backgroundColor = '';
-            el.style.borderRadius = '';
-            el.removeAttribute('data-atv-highlighted');
+        document.querySelectorAll('mark[data-atv-highlighted="true"]').forEach(mark => {
+            const parent = mark.parentNode;
+            // Create a text node with the mark's contents
+            const textNode = document.createTextNode(mark.textContent);
+            parent.replaceChild(textNode, mark);
+            // Optional: parent.normalize() to merge adjacent text nodes
+            parent.normalize();
         });
     })();
     """
