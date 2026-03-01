@@ -159,10 +159,10 @@ def capture_viewport_frames(
 
     for _ in range(total_frames):
         start_time = time.perf_counter()
-        screenshot_path = f"{output_dir}/frame_{current_counter:06d}.png"
+        screenshot_path = f"{output_dir}/frame_{current_counter:06d}.jpg"
         
-        # We capture specifically the viewport area.
-        page.screenshot(path=screenshot_path)
+        # Capture as high-speed jpeg
+        page.screenshot(path=screenshot_path, type="jpeg", quality=80)
 
         if current_counter % 10 == 0:
             logger_config.debug(f"Captured {current_counter - start_frame_counter + 1}/{total_frames} frames for current segment...", overwrite=True)
