@@ -125,8 +125,8 @@ def capture_viewport_frames(
     fps: int, 
     output_dir: str, 
     start_frame_counter: int = 0,
-    viewport_width: int = 390,
-    viewport_height: int = 844,
+    viewport_width: int = 375,
+    viewport_height: int = 667,
     frame_callback: Optional[Callable[[str], None]] = None
 ) -> int:
     """
