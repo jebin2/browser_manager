@@ -476,7 +476,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 
 	def _build_neko_image(
 		self,
-		application: str = "chrome-remote-debug",
+		application: str = "brave-remote-debug",
 		base_image: str = "ghcr.io/m1k1o/neko/base:latest"
 	) -> bool:
 		"""
@@ -688,7 +688,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 		image_name = config.neko_docker_cmd.split(" ")[-1]
 		if not self._docker_image_exists(image_name):
 			logger_config.info(f"Image {image_name} not found — building...")
-			if not self._build_neko_image():
+			if not self._build_neko_image(application=config.neko_application):
 				raise BrowserLaunchError(f"Failed to build neko Docker image: {image_name}")
 
 		# Stop any existing container + release its ports
@@ -893,20 +893,24 @@ except Exception:
 			return False
 
 	# ─────────────────────────────────────────────
-	# Graceful Chrome shutdown
+	# Graceful browser shutdown
 	# ─────────────────────────────────────────────
 
-	def _graceful_close_chrome(self, config: BrowserConfig) -> bool:
+	def _graceful_close_browser(self, config: BrowserConfig) -> bool:
 		"""
-		Send SIGTERM to Chrome inside the container so it saves session state
+		Send SIGTERM to the browser inside the container so it saves session state
 		cleanly. Prevents the "Restore pages?" crash recovery dialog on next launch.
+
+		Uses config.browser_process_name to target the correct process
+		("chrome" or "brave").
 
 		Sequence:
 		  1. Check container is running (skip gracefully if not).
-		  2. killall -TERM chrome (or shell-based fallback if killall missing).
-		  3. Wait 3 seconds for Chrome to exit.
+		  2. killall -TERM <browser> (or shell-based fallback if killall missing).
+		  3. Wait 3 seconds for the browser to exit.
 		  4. If still running, force SIGKILL.
 		"""
+		process_name = config.browser_process_name
 		try:
 			result = subprocess.run(
 				["docker", "ps", "--format", "{{.Names}}"],
@@ -916,11 +920,11 @@ except Exception:
 				logger_config.info(f"Container {config.docker_name} not running — skipping graceful close.")
 				return True
 
-			logger_config.info(f"Gracefully closing Chrome in {config.docker_name}...")
+			logger_config.info(f"Gracefully closing {process_name} in {config.docker_name}...")
 
 			# Attempt 1: killall
 			kill_result = subprocess.run(
-				["docker", "exec", config.docker_name, "killall", "-TERM", "chrome"],
+				["docker", "exec", config.docker_name, "killall", "-TERM", process_name],
 				check=False, timeout=5,
 				stdout=subprocess.PIPE, stderr=subprocess.PIPE
 			)
@@ -930,7 +934,7 @@ except Exception:
 				logger_config.info("killall unavailable — using shell-based SIGTERM...")
 				subprocess.run(
 					["docker", "exec", config.docker_name, "sh", "-c",
-					 "for pid in $(ps aux | grep -i chrome | grep -v grep | awk '{print $2}'); "
+					 f"for pid in $(ps aux | grep -i {process_name} | grep -v grep | awk '{{print $2}}'); "
 					 "do kill -TERM $pid 2>/dev/null; done"],
 					check=False, timeout=10,
 					stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -941,30 +945,30 @@ except Exception:
 			# Check if still alive
 			check = subprocess.run(
 				["docker", "exec", config.docker_name, "sh", "-c",
-				 "ps aux | grep -i chrome | grep -v grep"],
+				 f"ps aux | grep -i {process_name} | grep -v grep"],
 				stdout=subprocess.PIPE, stderr=subprocess.PIPE,
 				text=True, timeout=5
 			)
 
 			if check.stdout.strip():
-				logger_config.warning("Chrome still running — forcing SIGKILL...")
+				logger_config.warning(f"{process_name} still running — forcing SIGKILL...")
 				subprocess.run(
 					["docker", "exec", config.docker_name, "sh", "-c",
-					 "for pid in $(ps aux | grep -i chrome | grep -v grep | awk '{print $2}'); "
+					 f"for pid in $(ps aux | grep -i {process_name} | grep -v grep | awk '{{print $2}}'); "
 					 "do kill -9 $pid 2>/dev/null; done"],
 					check=False, timeout=10,
 					stdout=subprocess.PIPE, stderr=subprocess.PIPE
 				)
 				time.sleep(1)
 
-			logger_config.info("Chrome closed gracefully.")
+			logger_config.info(f"{process_name} closed gracefully.")
 			return True
 
 		except subprocess.TimeoutExpired:
-			logger_config.warning("Timeout during graceful Chrome close.")
+			logger_config.warning(f"Timeout during graceful {process_name} close.")
 			return False
 		except Exception as e:
-			logger_config.warning(f"Error during graceful Chrome close: {e}")
+			logger_config.warning(f"Error during graceful {process_name} close: {e}")
 			return False
 
 	# ─────────────────────────────────────────────
@@ -992,8 +996,8 @@ except Exception:
 				except Exception as e:
 					logger_config.warning(f"Error stopping screenshot process: {e}")
 
-			# 2. Graceful Chrome shutdown (prevents "Restore pages?" on next launch)
-			self._graceful_close_chrome(config)
+			# 2. Graceful browser shutdown (prevents "Restore pages?" on next launch)
+			self._graceful_close_browser(config)
 
 			# 3. Stop container + release ports
 			self.stop_docker(config)
