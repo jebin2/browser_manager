@@ -22,7 +22,11 @@ class BrowserLauncher(ABC):
     def cleanup(self, config: BrowserConfig, process: subprocess.Popen) -> None:
         """Clean up browser process."""
         pass
-    
+
+    def start_cdp_screenshot_loop(self, page, config: BrowserConfig, interval: int = 2) -> None:
+        """Start a loop that takes screenshots of the browser."""
+        pass
+
     def _get_websocket_url(self, port: int, timeout: int) -> str:
         """Get WebSocket URL from browser."""
         try:
