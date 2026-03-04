@@ -80,6 +80,8 @@ from dataclasses import dataclass, field
 from typing import Optional, List
 from enum import Enum
 import os
+import requests
+from custom_logger import logger_config
 
 _WEBRTC_RANGE_SIZE = 101
 
@@ -225,7 +227,29 @@ class BrowserConfig:
 
     # ── Helper methods ────────────────────────────────────────────────────────
 
-    def policy_volume_mount(self, host_policy_path: str) -> str:
+    def download_policies(self) -> Optional[str]:
+        target_path = f"/temp_dir/{self.browser_type.value}_policies.json"
+        if os.path.exists(target_path):
+            print(f"Policy file already exists at {target_path}, skipping download.")
+            return target_path
+
+        url = f"https://raw.githubusercontent.com/jebin2/neko-apps/4da03c2fc22c5e5747000cf8243b5418ff81bc0f/{self.browser_type.value}-remote-debug/policies.json"
+
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                with open(target_path, 'wb') as f:
+                    f.write(response.content)
+                logger_config.success(f"Downloaded policies.json to {target_path}")
+                return target_path
+            else:
+                logger_config.error(f"Failed to download policies.json. Status code: {response.status_code}")
+                return None
+        except Exception as e:
+            logger_config.error(f"Error downloading policies.json: {e}")
+            return None
+
+    def policy_volume_mount(self, host_policy_path: str = None) -> str:
         """
         Return the Docker volume mount string for a policy file.
 
@@ -233,6 +257,9 @@ class BrowserConfig:
             policy_path = os.path.join(os.getcwd(), 'policies.json')
             additional_flags.append(config.policy_volume_mount(policy_path))
         """
+        if not host_policy_path:
+            host_policy_path = self.download_policies()
+
         return f'-v {host_policy_path}:{self.policy_container_path}'
 
     # ─────────────────────────────────────────────────────────────────────────
