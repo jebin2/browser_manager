@@ -870,20 +870,23 @@ except Exception:
 			logger_config.info("Waiting for dialog to appear.", seconds=3)
 
 			subprocess.run(
-				['docker', 'exec', config.docker_name, 'xdotool', 'key', 'ctrl+l'],
+				['docker', 'exec', config.docker_name, 'xdotool', 'key',
+				 '--clearmodifiers', 'ctrl+l'],
 				timeout=3
 			)
-			logger_config.info("Wait for command finish.", seconds=1)
+			logger_config.info("Wait for address bar focus.", seconds=1)
 
 			subprocess.run(
 				['docker', 'exec', config.docker_name, 'xdotool', 'type',
+				 '--clearmodifiers', '--delay', '50',
 				 f'{config.neko_attach_folder}/{file_path}'],
-				timeout=5
+				timeout=10
 			)
-			logger_config.info("Wait for command finish.", seconds=1)
+			logger_config.info("Wait for autocomplete to settle.", seconds=2)
 
 			subprocess.run(
-				['docker', 'exec', config.docker_name, 'xdotool', 'key', 'Return'],
+				['docker', 'exec', config.docker_name, 'xdotool', 'key',
+				 '--clearmodifiers', 'Return'],
 				timeout=3
 			)
 			return True
