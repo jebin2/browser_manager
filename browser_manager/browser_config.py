@@ -228,7 +228,7 @@ class BrowserConfig:
     # ── Helper methods ────────────────────────────────────────────────────────
 
     def download_policies(self) -> Optional[str]:
-        target_path = f"/temp_dir/{self.browser_type.value}_policies.json"
+        target_path = f"/tmp/{self.browser_type.value}_policies.json"
         if os.path.exists(target_path):
             print(f"Policy file already exists at {target_path}, skipping download.")
             return target_path
