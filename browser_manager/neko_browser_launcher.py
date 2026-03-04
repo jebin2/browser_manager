@@ -884,10 +884,21 @@ except Exception:
 			)
 			logger_config.info("Wait for autocomplete to settle.", seconds=2)
 
+			# First Return — confirms path in GTK location bar
 			subprocess.run(
 				['docker', 'exec', config.docker_name, 'xdotool', 'key',
 				 '--clearmodifiers', 'Return'],
 				timeout=3
+			)
+			time.sleep(1)
+
+			# Fallback — press Alt+o (GTK "Open" button shortcut) to submit the dialog
+			# In Brave's GTK file chooser, Return in the location bar may only
+			# confirm the path without clicking Open. Alt+o clicks the Open button.
+			subprocess.run(
+				['docker', 'exec', config.docker_name, 'xdotool', 'key',
+				 '--clearmodifiers', 'alt+o'],
+				timeout=3, capture_output=True
 			)
 			return True
 
