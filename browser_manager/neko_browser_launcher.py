@@ -357,6 +357,26 @@ def _find_free_webrtc_range(start: int, used_starts: set, size: int = _WEBRTC_RA
 		port += size
 
 
+def _stop_all_containers_by_image(image_name: str):
+	"""Stop all running containers using the given image to free up ports."""
+	try:
+		result = subprocess.run(
+			["docker", "ps", "--format", "{{.Names}}\t{{.Image}}"],
+			capture_output=True, text=True, timeout=5
+		)
+		for line in result.stdout.strip().splitlines():
+			parts = line.split("\t")
+			if len(parts) == 2 and parts[1] == image_name:
+				name = parts[0]
+				logger_config.info(f"[PortManager] Stopping old container to free ports: {name}")
+				subprocess.run(["docker", "kill", name], check=False,
+							   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+				subprocess.run(["docker", "rm", "-f", name], check=False,
+							   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	except Exception as e:
+		logger_config.warning(f"[PortManager] Failed to stop containers for image {image_name}: {e}")
+
+
 # ─────────────────────────────────────────────
 # Internal unlocked operations
 # Only call when _thread_lock + _FileLock already held by caller.
@@ -377,7 +397,7 @@ def _release_ports_unlocked(docker_name: str, state: dict) -> dict:
 # Never reversed — consistent ordering prevents deadlock.
 # ─────────────────────────────────────────────
 
-def _allocate_ports(docker_name: str) -> tuple[int, int, int]:
+def _allocate_ports(docker_name: str, image_name: Optional[str] = None) -> tuple[int, int, int]:
 	"""
 	Allocate a unique set of ports for a new Neko container.
 
@@ -387,6 +407,7 @@ def _allocate_ports(docker_name: str) -> tuple[int, int, int]:
 	  3. If docker_name already in state (dead but not purged), reclaim it.
 	  4. Find free ports not in use by current allocations or system.
 	  5. Persist allocation atomically.
+	  6. If WebRTC range exhausted, stop all containers of the same image and retry once.
 
 	Note: If the container is still running when this is called, the caller
 	(NekoBrowserLauncher.launch) is responsible for stopping it first via
@@ -396,23 +417,37 @@ def _allocate_ports(docker_name: str) -> tuple[int, int, int]:
 	  (server_port, debug_port, webrtc_port_start)
 	"""
 	_validate_docker_name(docker_name)
+
+	def _try_allocate(state):
+		state = _purge_dead_allocations(state)
+		state = _maybe_reset_cursors(state)
+		if docker_name in state["allocations"]:
+			state = _release_ports_unlocked(docker_name, state)
+		used_server = {v["server_port"]       for v in state["allocations"].values()}
+		used_debug  = {v["debug_port"]        for v in state["allocations"].values()}
+		used_webrtc = {v["webrtc_port_start"] for v in state["allocations"].values()}
+		server_port       = _find_free_tcp_port(state["next_server_port"], used_server)
+		debug_port        = _find_free_tcp_port(state["next_debug_port"],  used_debug)
+		webrtc_port_start = _find_free_webrtc_range(state["next_webrtc_port"], used_webrtc)
+		return state, server_port, debug_port, webrtc_port_start
+
 	with _thread_lock:
 		with _FileLock(_PORT_LOCK_FILE):
 			state = _read_state()
-			state = _purge_dead_allocations(state)
-			state = _maybe_reset_cursors(state)
-
-			# Reclaim stale entry if present (dead container not yet purged)
-			if docker_name in state["allocations"]:
-				state = _release_ports_unlocked(docker_name, state)
-
-			used_server = {v["server_port"]	  for v in state["allocations"].values()}
-			used_debug  = {v["debug_port"]		for v in state["allocations"].values()}
-			used_webrtc = {v["webrtc_port_start"] for v in state["allocations"].values()}
-
-			server_port	   = _find_free_tcp_port(state["next_server_port"], used_server)
-			debug_port		= _find_free_tcp_port(state["next_debug_port"],  used_debug)
-			webrtc_port_start = _find_free_webrtc_range(state["next_webrtc_port"], used_webrtc)
+			try:
+				state, server_port, debug_port, webrtc_port_start = _try_allocate(state)
+			except RuntimeError:
+				if image_name:
+					logger_config.warning("[PortManager] No free UDP port range — stopping all containers of same image and retrying.")
+					_stop_all_containers_by_image(image_name)
+					state = _read_state()
+					state["allocations"] = {}
+					state["next_server_port"]  = _DEFAULT_STATE["next_server_port"]
+					state["next_debug_port"]   = _DEFAULT_STATE["next_debug_port"]
+					state["next_webrtc_port"]  = _DEFAULT_STATE["next_webrtc_port"]
+					state, server_port, debug_port, webrtc_port_start = _try_allocate(state)
+				else:
+					raise
 
 			state["allocations"][docker_name] = {
 				"server_port":	   server_port,
@@ -700,7 +735,7 @@ class NekoBrowserLauncher(BrowserLauncher):
 			self._docker_fix_profile_permissions(config.user_data_dir, image_name)
 
 		# Allocate unique ports and apply to config
-		server_port, debug_port, webrtc_port_start = _allocate_ports(config.docker_name)
+		server_port, debug_port, webrtc_port_start = _allocate_ports(config.docker_name, image_name)
 		config.server_port	   = server_port
 		config.debug_port		= debug_port
 		config.webrtc_port_start = webrtc_port_start
