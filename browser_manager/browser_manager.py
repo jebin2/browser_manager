@@ -121,14 +121,12 @@ class BrowserManager:
             
             self.page = self.page_manager.get_current_page()
             
-            # Navigate to URL
             try:
                 self.page.goto(self.config.url, timeout=self.config.connection_timeout * 1000, wait_until="domcontentloaded")
             except Exception as e:
                 logger_config.warning(f"Error or timeout during initial navigation: {e}")
 
             self.page.bring_to_front()
-            # self.page.wait_for_load_state("networkidle", timeout=self.config.connection_timeout * 1000)
             
             self._is_started = True
             

@@ -152,6 +152,7 @@ class BrowserConfig:
     host_network: bool = False
     additionl_docker_flag: str = ""
     disable_extensions: Optional[bool] = None
+    use_default_policy: bool = True
 
     browser_flags: str = (
         "--disable-gpu "
@@ -248,7 +249,7 @@ class BrowserConfig:
             print(f"Policy file already exists at {target_path}, skipping download.")
             return target_path
 
-        url = f"https://raw.githubusercontent.com/jebin2/neko-apps/4da03c2fc22c5e5747000cf8243b5418ff81bc0f/{self.browser_type.value}-remote-debug/policies.json"
+        url = f"https://raw.githubusercontent.com/jebin2/neko-apps/6678e11e0409fc2077ccc8a40510dbe0ee53fe07/{self.browser_type.value}-remote-debug/policies.json"
 
         try:
             response = requests.get(url)
@@ -300,12 +301,15 @@ class BrowserConfig:
              .replace("webrtc_end",   str(self.webrtc_port_end))
             for p in self.port_map_template
         ])
+        has_custom_policy = self.policy_container_path in self.additionl_docker_flag
+        policy_mount = self.policy_volume_mount() if self.use_default_policy and not has_custom_policy else ''
         return (
             f'docker run -d --name {self.docker_name} --rm '
             f'{"--network=host" if self.host_network else ""} '
             f'{port_map_resolved} '
             '--cap-add=SYS_ADMIN '
             f'-v {self.user_data_dir or "/tmp/neko-profile"}:{self.profile_mount_path} '
+            f'{policy_mount} '
             f'{self.additionl_docker_flag} '
             f'-e NEKO_WEBRTC_EPR={self.webrtc_port_start}-{self.webrtc_port_end} '
             '-e NEKO_WEBRTC_NAT1TO1=127.0.0.1 '
