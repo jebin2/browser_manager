@@ -151,10 +151,11 @@ class BrowserConfig:
     docker_name: str = "temp"
     host_network: bool = False
     additionl_docker_flag: str = ""
+    disable_extensions: Optional[bool] = None
 
     browser_flags: str = (
         "--disable-gpu "
-        "--no-sandbox --no-zygote --disable-extensions "
+        "--no-sandbox --no-zygote "
         "--window-size=1920,1080 --no-first-run "
         "--disable-session-crashed-bubble --disable-infobars "
         "--disable-dev-shm-usage"
@@ -176,6 +177,12 @@ class BrowserConfig:
     debug_port: int = 9223
     webrtc_port_start: int = 52000
     webrtc_port_range_size: int = _WEBRTC_RANGE_SIZE
+
+    def __post_init__(self):
+        """Set defaults that depend on other fields."""
+        if self.disable_extensions is None:
+            # Brave needs extensions enabled for Shields ad blocking to work fully
+            self.disable_extensions = self.browser_type != BrowserType.BRAVE
 
     # ── Browser-aware properties ──────────────────────────────────────────────
 
@@ -224,6 +231,14 @@ class BrowserConfig:
     @chrome_flags.setter
     def chrome_flags(self, value: str):
         self.browser_flags = value
+
+    @property
+    def effective_browser_flags(self) -> str:
+        """Browser flags with conditional --disable-extensions based on disable_extensions field."""
+        flags = self.browser_flags
+        if self.disable_extensions:
+            flags += " --disable-extensions"
+        return flags
 
     # ── Helper methods ────────────────────────────────────────────────────────
 
@@ -294,7 +309,7 @@ class BrowserConfig:
             f'{self.additionl_docker_flag} '
             f'-e NEKO_WEBRTC_EPR={self.webrtc_port_start}-{self.webrtc_port_end} '
             '-e NEKO_WEBRTC_NAT1TO1=127.0.0.1 '
-            f'-e {self.flags_env_var}="{self.browser_flags}" '
+            f'-e {self.flags_env_var}="{self.effective_browser_flags}" '
             '-e NEKO_DISABLE_AUDIO=1 '
             f'{self.docker_image}'
         )

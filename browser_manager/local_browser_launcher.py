@@ -54,7 +54,7 @@ class LocalBrowserLauncher(BrowserLauncher):
             config.browser_executable,
             f"--remote-debugging-port={config.debugging_port}",
             f"--user-data-dir={config.user_data_dir}",
-            *config.browser_flags.split()
+            *config.effective_browser_flags.split()
         ]
         
         if config.headless:

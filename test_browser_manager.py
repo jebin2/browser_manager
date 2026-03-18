@@ -4,10 +4,11 @@ from custom_logger import logger_config
 from browser_manager.browser_config import BrowserConfig
 
 config = BrowserConfig()
+config.url = "https://www.bbc.com/news/articles/cgk2lm5znyro"
 config.browser_executable = "/usr/bin/brave"
 #config.use_neko = False
 config.docker_name = "test1"
-config.user_data_dir = f"/home/jebin/.browser_manager_chrome_profile"
+# config.user_data_dir = f"/home/jebin/.browser_manager_chrome_profile"
 #config.user_data_dir = f'{os.getenv("PARENT_BASE_PATH")}/CaptionCreator/whoa/chatgpt_profile'
 browser_manager = BrowserManager(config)
 with browser_manager as page:
